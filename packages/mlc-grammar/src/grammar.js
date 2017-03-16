@@ -111,7 +111,6 @@ const stringCharacter =
             seqOf([
                 str('\\'), oneOf([
                     char(new RegExp(`[tnr${quoteChar}\\\\]`)),
-                    // char(/[tn"r]/),
                     // TODO: add unicode escape(?)
                     // seqOf([ str('u'), integer ]),
                 ]),

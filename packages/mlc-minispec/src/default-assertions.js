@@ -25,20 +25,21 @@ module.exports = function defaultAssertions() {
         var a = pair[0], b = pair[1];
         return assertBase(
             (_j(a) !== _j(b)),
-            "Expected: " + pretty(b) + "\n------\n  Got:" + pretty(a) + "\n"
+            "Expected: " + pretty(a) + "\n------\n  Got: " + pretty(b) + "\n"
         );
     }
 
     // Two valus have to be equal
     function assertEq(a, b) {
-        return assertEqPair([a,b]);
+        return assertEqPair([b,a]);
     }
 
     // update the assertions
     return {
         eq: assertEq,
         eqPair: assertEqPair,
-        isDefined: assertIsDefined
+        isDefined: assertIsDefined,
+        isTrue: assertBase,
     };
 
 }

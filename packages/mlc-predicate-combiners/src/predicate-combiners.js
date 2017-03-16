@@ -2,62 +2,12 @@
 import * as R from 'ramda'
 import {Maybe} from 'ramda-fantasy'
 import debug from 'debug'
+import type {Tokens} from './token-stream.js'
+import * as tokenStream from './token-stream'
 
 const {Just, Nothing} = Maybe;
 
-export interface Tokens<T> {
-    next():{done:boolean, value?: T};
-    save():SaveState;
-    restore(saved: SaveState):Tokens<T>;
-    // testing helper
-    consumed():number;
-    done():boolean;
-}
-
-
-class TokenStream<T> implements Tokens<T> {
-
-    constructor(tokens: Array<T> | string, start: number) {
-        this.tokens = tokens;
-        this.idx = start;
-        this.end = tokens.length
-    }
-
-
-    next(): {done:boolean, i:number, value?: T} {
-        let i = this.idx;
-        if (i >= this.end) {
-            return {done: true, i};
-        }
-
-        let value = this.tokens[i];
-        this.idx = i + 1;
-        return {done: false, i, value};
-    }
-
-
-    save(): number {
-        return this.idx;
-    }
-
-    restore(idx: number): Tokens<T> {
-        this.idx = idx;
-        return this;
-    }
-
-    consumed() {
-        return this.idx;
-    }
-
-    done() {
-        return this.idx >= this.end;
-    }
-}
-
-
-export function makeTokenStream<T>(tokens: (Array<T> | string)): Tokens<T> {
-    return new TokenStream(tokens, 0);
-}
+export const makeTokenStream = tokenStream.makeTokenStream;
 
 
 // Unique Ids for debug
@@ -119,6 +69,12 @@ export const combinator = (name: string, combinator: Predicate<T>) =>
 // BASE COMBINATORS
 // ----------------
 
+// Unity predicate that accepts nothing
+export function nothing(t: Tokens<T>): Maybe<Tokens<T>> {
+    console.log("Gettin:", t)
+    return Nothing();
+    // return Just(t)
+}
 
 export const one = (pred: (t: T) => boolean): Predicate<T> =>
     combinator("~one",
@@ -216,4 +172,54 @@ export const proxy = (name:string, predGetter:()=>Predicate<T>):Predicate<T> => 
     return  combinator(`proxy:${name}`,
         (t: Tokens<T>): Maybe<Tokens<T>> => c()(t));
 };
+
+const rx = (combiner, len) => args => [combiner, args.length > l];
+
+
+
+
+export const Regex = {
+    '*': [a => any(a[0]), a => a.length === 1],
+    '+': [a => atLeastOne(a[0]), a => a.length === 1 ] ,
+    '?': [a => maybe(a[0]), a => a.length === 1 ],
+    // optional predicate matches
+    '/': [oneOf, a => a.length > 0],
+    // Sequence of predicate matches
+    ',': [seqOf, a => a.length > 0],
+};
+
+
+// Takes an S-Expresion of [combinerStr, predicates...] and returns a combined parser
+export function sExpr(list:Array<string|any>):Predicate<T> {
+    if (list.length === 0) {
+        return nothing;
+    }
+    // Flow didnt wanted to eat this as destructuring...
+    let head:string = list[0];
+    let rest:Array<Predicate<T>> = list.slice(1);
+
+    let combiner = Regex[head];
+    if (!combiner) {
+        throw new Error(`Unknown combiner: '${head}'.`);
+    }
+
+    let combinerFn:(Array)=>Predicate<T> = combiner[0];
+    let combinerTest = combiner[1];
+
+    // test the arguments
+    if (!combinerTest(rest)) {
+         throw new Error(`Combiner '${head}' cannot be used with the given arguments.: ${JSON.stringify(rest)}`);
+    }
+
+    // convert to predicates depth-first
+    let resolveArgs = R.map(R.cond([
+        [Array.isArray,  sExpr],
+        [R.T, R.identity],
+    ]));
+
+
+    return combinerFn(resolveArgs(rest));
+
+}
+
 

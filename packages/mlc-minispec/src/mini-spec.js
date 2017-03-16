@@ -54,28 +54,27 @@ function assertFromPred(currentNameGetter) {
 
 
 function miniSpec(assertPredicates, ok, error, done, state, specs) {
-    var currentName = "";
+    var currentName = [];
 
     if (!Array.isArray(assertPredicates)) {
         throw new Error("Assert Predicates must be an array");
     }
+    function getName() {
+        return currentName.join(' / ');
+    }
 
     function it(name, pred) {
-        var n = currentName;
-        currentName = n + ":" + name;
+        currentName.push(name);
         try {
             pred();
-            state = ok(state, {name: currentName});
+            state = ok(state, {name: getName()});
         } catch (e) {
-            state = error(state, {name: currentName, error: e});
+            state = error(state, {name: getName(), error: e});
         }
 
-        currentName = n;
+        currentName.pop();
     }
 
-    function getName() {
-        return currentName;
-    }
 
     var makeAssert = assertFromPred(getName);
     var makeAsserts = function (predsMap) {
