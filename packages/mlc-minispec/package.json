@@ -1,0 +1,13 @@
+{
+  "name": "mlc-minispec",
+  "version": "0.5.0",
+  "description": "Minimal spec library",
+  "main": "src/index.js",
+  "scripts": {
+    "test": "node test/test.js"
+  },
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+  }
+}
