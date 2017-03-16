@@ -1,0 +1,35 @@
+{
+  "name": "mlc-predicate-combiners",
+  "version": "0.1.0",
+  "description": "Basic combiners for composing structure parsing predicates",
+  "main": "index.js",
+  "scripts": {
+    "test": "./node_modules/.bin/jasmine spec/**/*.es6 spec/*.es6",
+    "start": "./node_modules/.bin/nodemon -e es6 --ignore \"*.js\" --exec npm run build",
+    "build": "./node_modules/.bin/babel ./*.es6 --out-dir dist --source-maps",
+    "dist": "./node_modules/.bin/webpack"
+  },
+  "author": "Gyula Laszlo <gyula.laszlo.gm@gmail.com>",
+  "license": "LGPL",
+  "dependencies": {
+    "debug": "^2.6.2",
+    "ramda": "^0.23.0",
+    "ramda-fantasy": "^0.7.0"
+  },
+  "devDependencies": {
+    "babel-cli": "^6.23.0",
+    "babel-core": "^6.23.1",
+    "babel-plugin-contracts": "^1.1.1",
+    "babel-plugin-syntax-flow": "^6.18.0",
+    "babel-plugin-tcomb": "^0.3.24",
+    "babel-plugin-transform-class-properties": "^6.23.0",
+    "babel-plugin-transform-flow-strip-types": "^6.22.0",
+    "babel-preset-env": "^1.1.10",
+    "babel-preset-es2015": "^6.22.0",
+    "babel-register": "^6.23.0",
+    "babel-watch": "^2.0.6",
+    "flow-bin": "^0.41.0",
+    "mlc-minispec": "^0.5.0",
+    "tcomb": "^3.2.20"
+  }
+}

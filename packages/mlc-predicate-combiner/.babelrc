@@ -1,0 +1,18 @@
+{
+  "presets": [
+    "env",
+    ["es2015" , { "modules": false }]
+  ],
+
+  "plugins": [
+    "tcomb",
+    "transform-flow-strip-types",
+    "transform-class-properties"
+  ],
+
+  "env": {
+    "production": {},
+    "development": {}
+
+  }
+}
