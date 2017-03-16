@@ -25,7 +25,7 @@ module.exports = function defaultAssertions() {
         var a = pair[0], b = pair[1];
         return assertBase(
             (_j(a) !== _j(b)),
-            "Expected: " + pretty(a) + "\n------\n  Got:" + pretty(b) + "\n"
+            "Expected: " + pretty(b) + "\n------\n  Got:" + pretty(a) + "\n"
         );
     }
 

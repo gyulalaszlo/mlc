@@ -1,5 +1,5 @@
 // curry
-var _c = curry = function _curry(fn) {
+var _c = function _curry(fn) {
     var args = Array.prototype.slice.call(arguments, 1);
     return function () {
         var localArgs = arguments.length > 0 ? Array.prototype.slice.call(arguments, 0) : [];
@@ -7,6 +7,7 @@ var _c = curry = function _curry(fn) {
     }
 
 };
+var _curry = _c;
 
 // map over an object
 function mapObj(fn, o) {

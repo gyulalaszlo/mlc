@@ -47,7 +47,7 @@ function doneHandler(s, assertCount) {
 }
 
 module.exports = function (specs) {
-    runSpecs = function (specFn) {
+    const runSpecs = function (specFn) {
         miniSpec([defaultAssertions()],okHandler, errorHandler, doneHandler, state(), specFn);
     };
     return (Array.isArray(specs) ? specs : [specs]).map(runSpecs);
