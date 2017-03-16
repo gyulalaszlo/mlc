@@ -43,9 +43,13 @@ function doneHandler(s, assertCount) {
         console.log();
     });
     console.log("%d nodes, %d assertions, %d errors", s.ok.length, assertCount, s.errors.length);
+    return Object.assign(s, {assertCount: assertCount});
 }
 
 module.exports = function (specs) {
-    miniSpec([defaultAssertions()],okHandler, errorHandler, doneHandler, state(), specs);
+    runSpecs = function (specFn) {
+        miniSpec([defaultAssertions()],okHandler, errorHandler, doneHandler, state(), specFn);
+    };
+    return (Array.isArray(specs) ? specs : [specs]).map(runSpecs);
 };
 

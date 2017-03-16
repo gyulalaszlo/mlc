@@ -1,10 +1,7 @@
-import {nodeJs} from 'mlc-minispec'
-import {makeTokenStream, one, oneOf, any, seqOf, maybe} from '../src/predicate-combiners'
-import * as R from 'ramda'
-// import {Maybe} from 'ramda-fantasy'
-// const {Just, Nothing, isNothing, isJust} = Maybe;
+const {makeTokenStream, one, oneOf, any, seqOf, maybe} = require('../src/predicate-combiners');
+const R = require('ramda');
 
-nodeJs((describe, it, expect) => {
+module.exports = (describe, it, expect) => {
 
     const log = R.curryN(2, console.log);
 
@@ -99,4 +96,4 @@ nodeJs((describe, it, expect) => {
     });
 
 
-});
+};
