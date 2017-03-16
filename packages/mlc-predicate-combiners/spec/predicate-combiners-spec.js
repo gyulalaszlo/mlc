@@ -16,13 +16,18 @@ module.exports = (describe, it, expect) => {
             expect.eqPair);
     const _j = JSON.stringify;
 
-    const rulesChecker = rule => R.map(([i, o]) => describe(` case: ${_j(i)} -> ${_j(o)}`, () => _ruleChecker(rule)));
+    const rulesChecker = R.curryN(3, (name, rule, examples) =>
+        describe(name, () => R.map(([i, o]) => {
+            describe(`${name} case: ${_j(i)} -> ${_j(o)}`, () => {
+                _ruleChecker(rule)([i, o]);
+            })
+        }, examples)));
 
 
     describe('one()', () => {
 
         it('should lift a boolean element predicate to an Iterator -> Maybe predicate', () => {
-            rulesChecker(one((t) => t < 10))([
+            rulesChecker("one", one((t) => t < 10))([
                 [[10], -1],
                 [[5], 1],
                 [[5, 5], 1],
@@ -37,54 +42,46 @@ module.exports = (describe, it, expect) => {
     const eq = v => one(t => t === v);
 
 
-    describe('oneOf()', () => {
-        it('should create a multiplexer rule', () => {
-            rulesChecker(oneOf([eq('a'), eq('b')]))(DATA.oneOf);
-        });
-    });
-
-
-    describe('any()', () => {
-        it('should create a looping rule', () => {
-            rulesChecker(any(eq('a')))(DATA.any);
-        });
-    });
-    //
-    //
-    describe('seqOf', () => {
-        it('should create a sequential rule', () => {
-            let rule = seqOf([eq('a'), eq('b')]);
-            rulesChecker(rule)(DATA.seqOf);
-
-        });
-
-    });
-    //
-    describe('maybe', () => {
-        it('should create an optional rule', () => {
-            rulesChecker(maybe(eq('a')))(DATA.maybe);
-        });
+    describe('functional combiners', () => {
+        rulesChecker("oneOf", oneOf([eq('a'), eq('b')]))(DATA.oneOf);
+        rulesChecker('any', any(eq('a')))(DATA.any);
+        rulesChecker('seqOf', seqOf([eq('a'), eq('b')]))(DATA.seqOf);
+        rulesChecker('maybe', maybe(eq('a')))(DATA.maybe);
     });
 
 
     describe('Regex', () => {
+        const checkSExpr = (name, s) => rulesChecker(name, sExpr(s));
+
         it('should parse S-expr lists', () => {
             [
-                [DATA.empty, []],
+                [DATA.nothing, []],
                 [DATA.any, ['*', eq('a')]],
                 [DATA.oneOf, ['/', eq('a'), eq('b')]],
                 [DATA.seqOf, [',', eq('a'), eq('b')]],
-            ].map(([res, s]) => rulesChecker(sExpr(s))(res));
+            ].map(([res, s]) => checkSExpr(s[0] ? s[0] : 'empty', s)(res));
+        });
+
+
+        it('should be nestable', () => {
+            checkSExpr('nested', [',', ['/', eq('a'), eq('b')], eq('c')])([
+            ]);
         });
     });
 };
 
 
 const DATA = {
-    empty: [
+    nothing: [
         [[], -1],
-        [['a'], 0],
+        [['a'], -1],
         [['a', 'b'], -1],
+    ],
+    anything: [
+        [[], -1],
+        [['a'], 1],
+        [[null], 1],
+        [['ccccc', 'a'], 1],
     ],
     any: [
         [[], 0],
@@ -123,5 +120,13 @@ const DATA = {
 
         [['c', 'a'], 0],
     ],
+
+
+    nested: [
+        [['a', 'b', 'c'], -1],
+        [['a', 'c', 'c'], 2],
+        [['b', 'c', 'c'], 2],
+        [['b', 'a', 'c'], -1],
+    ]
 
 };

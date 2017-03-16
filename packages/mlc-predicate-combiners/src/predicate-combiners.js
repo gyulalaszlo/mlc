@@ -71,9 +71,15 @@ export const combinator = (name: string, combinator: Predicate<T>) =>
 
 // Unity predicate that accepts nothing
 export function nothing(t: Tokens<T>): Maybe<Tokens<T>> {
-    console.log("Gettin:", t)
     return Nothing();
-    // return Just(t)
+}
+
+// Unity predicate that accepts any single input
+export function anything(t: Tokens<T>): Maybe<Tokens<T>> {
+    let v = t.next();
+    return (!v.done)
+        ? Just(t)
+        : Nothing();
 }
 
 export const one = (pred: (t: T) => boolean): Predicate<T> =>
