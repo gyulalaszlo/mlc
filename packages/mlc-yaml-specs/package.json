@@ -1,0 +1,13 @@
+{
+  "name": "mlc-yaml-specs",
+  "version": "0.5.0",
+  "description": "Builds spec runners from YAML files",
+  "main": "src/index.js",
+  "scripts": {
+    "test": "node test/test.js"
+  },
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+  }
+}
