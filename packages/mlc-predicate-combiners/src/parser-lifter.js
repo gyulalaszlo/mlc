@@ -5,6 +5,7 @@ import * as R from 'ramda'
 import {Maybe} from 'ramda-fantasy'
 const {Just, Nothing} = Maybe;
 
+
 export function liftToParser(rule:Predicate<T>, callback:(T)=>any) {
     return (t:Tokens<T>):Maybe<Tokens<T>> => {
         const saved = t.save();
@@ -17,3 +18,6 @@ export function liftToParser(rule:Predicate<T>, callback:(T)=>any) {
 
     };
 }
+
+
+

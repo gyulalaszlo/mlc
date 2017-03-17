@@ -13,7 +13,7 @@ export const maybe = (pred: Predicate<T>): Predicate<T> =>
             if (Maybe.isNothing(current)) {
                 t.restore(saved);
             }
-            return Just(t);
+            return Just({ tokens: t, start: saved, end: t.save() } );
         });
 
 

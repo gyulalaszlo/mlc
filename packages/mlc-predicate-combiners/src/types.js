@@ -11,12 +11,14 @@ export interface Tokens<T> {
 }
 
 
+export type PredicateMatch<T> = {
+    tokens: Tokens<T>,
+    start: number,
+    end: number
+}
+
+export type PredicateResult<T> = Maybe<PredicateMatch<T>>
+
 export type Predicate<T> =
-    (t: Tokens<T>) => Maybe<Tokens<T>>;
+    (t: Tokens<T>) => PredicateResult<T>;
 
-
-export type PredicateResult<T, V>
-    = Maybe<
-        { tokens: Tokens<T>
-        , result: V
-        } >

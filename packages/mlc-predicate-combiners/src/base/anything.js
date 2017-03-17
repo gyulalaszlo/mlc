@@ -7,8 +7,9 @@ const {Just, Nothing} = Maybe;
 
 // Unity predicate that accepts any single input
 export function anything(t: Tokens<T>): Maybe<Tokens<T>> {
+    let start = t.save();
     let v = t.next();
     return (!v.done)
-        ? Just(t)
+        ? Just({tokens: t, start, end: t.save()})
         : Nothing();
 }

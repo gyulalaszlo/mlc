@@ -4,7 +4,7 @@
   "description": "Minimal spec library",
   "main": "src/index.js",
   "scripts": {
-    "test": "node test/test.js"
+    "test": "node test/index.js"
   },
   "author": "Gyula Laszlo <gyula.laszlo.gm@gmail.com>",
   "license": "ISC",

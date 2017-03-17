@@ -4,7 +4,7 @@
   "description": "Metaprogramming layer for C",
   "main": "index.js",
   "scripts": {
-    "test": "./node_modules/.bin/jasmine spec/**/*.es6 spec/*.es6",
+    "test": "",
     "start": "./node_modules/.bin/nodemon -e es6 --ignore \"*.js\" --exec npm run build",
     "build": "./node_modules/.bin/babel ./*.es6 --out-dir dist --source-maps",
     "dist": "./node_modules/.bin/webpack"

@@ -20,6 +20,11 @@ export {maybe} from './base/maybe'
 
 export {makeTokenStream} from './token-stream'
 
+import {any} from './base/any'
+import {oneOf} from './base/one-of'
+import {seqOf} from './base/seq-of'
+import {maybe} from './base/maybe'
+import {combinator} from './combiner-debug'
 
 // DDL for declaring a rule like a regular parser
 export const rule = (name, sequence) => combinator(name, seqOf(sequence));

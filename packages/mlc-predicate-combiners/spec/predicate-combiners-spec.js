@@ -11,7 +11,7 @@ module.exports = (describe, it, expect) => {
     const inputOperation = op => ([input, output]) => [op(input), output];
     const outputOperation = op => ([input, output]) => [input, op(output)];
     // transforms the maybe returned by the predicate into a position or -1
-    const getConsumed = res => res.map((t) => t.consumed()).getOrElse(-1);
+    const getConsumed = res => res.map((t) => t.tokens.consumed()).getOrElse(-1);
     const _ruleChecker =
         (rule) => R.pipe(
             inputOperation(R.compose(getConsumed, rule, makeTokenStream)),
