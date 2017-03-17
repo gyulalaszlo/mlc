@@ -1,4 +1,5 @@
 "use strict";
+import {Maybe} from 'ramda-fantasy'
 
 export interface Tokens<T> {
     next():{done:boolean, value?: T};
@@ -12,3 +13,10 @@ export interface Tokens<T> {
 
 export type Predicate<T> =
     (t: Tokens<T>) => Maybe<Tokens<T>>;
+
+
+export type PredicateResult<T, V>
+    = Maybe<
+        { tokens: Tokens<T>
+        , result: V
+        } >

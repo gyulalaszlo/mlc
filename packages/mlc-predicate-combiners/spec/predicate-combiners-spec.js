@@ -72,7 +72,7 @@ module.exports = (describe, it, expect) => {
 
 
         describe('sexprLift', ()=>{
-            const checkSExpr = (name, s) => rulesChecker(name, sExprLift(s, one));
+            const checkSExpr = (name, s) => rulesChecker(name, sExprLift(one, s));
 
             it('should lift boolean predicates', () => {
                 const a = v => v === 'a';

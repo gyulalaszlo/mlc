@@ -54,6 +54,6 @@ export function sExpr<T>(list:Array<string|any>, vocabulary:any=Regex):Predicate
 
 type LiftFn<T> = ( p:(t:T)=>boolean ) => Predicate<T>;
 
-export function sExprLift<T>(list:Array<string|any>, lifterFn:LiftFn<T>, vocabulary:any=Regex):Predicate<T> {
+export function sExprLift<T>(lifterFn:LiftFn<T>, list:Array<string|any>, vocabulary:any=Regex):Predicate<T> {
     return sExprBase(list, vocabulary, lifterFn);
 }
