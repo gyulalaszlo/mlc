@@ -1,3 +1,5 @@
+"use strict";
+
 // curry
 var _c = function _curry(fn) {
     var args = Array.prototype.slice.call(arguments, 1);
@@ -30,15 +32,18 @@ function map(fn, l) {
 
 
 // Creates assertions from predicates
-function assertFromPred(currentNameGetter) {
+function assertFromPred(currentNameGetter, opts) {
     var assertCount = 0;
     var outputFn = function (pred) {
         var o = function _miniSpecAssert() {
             ++assertCount;
             var err = pred.apply(undefined, arguments);
             if (err) {
+                opts.onAssertError({name: currentNameGetter()});
                 throw new Error("Failiure in " + JSON.stringify(currentNameGetter()) + "\n" + "==== " + err);
             }
+            opts.onAssertOk({name: currentNameGetter()});
+            return true;
         };
         return o;
     };
@@ -52,13 +57,44 @@ function assertFromPred(currentNameGetter) {
 
 }
 
+function withDefaultOptions(opts) {
+    function noHandlerProvided(name) {
+        return function () {
+            throw new Error("No handler given for:" + name);
+        }
+    }
 
-function miniSpec(assertPredicates, ok, error, done, state, specs) {
+    if (opts.assertPredicates && !Array.isArray(opts.assertPredicates)) {
+        throw new Error("opts.assertPredicates for mlc-minispec must be an array.");
+    }
+
+    return Object.assign({
+        // simple map of { name: boolean predicate } pairs for the asserts
+        // minispec will provide
+        assertPredicates: [],
+        // called before each node is started
+        start: noHandlerProvided("start"),
+        // called on each OK node
+        ok: noHandlerProvided("ok"),
+        // Called when errors are found
+        error: noHandlerProvided("error"),
+        // Called at the end of the test
+        done: noHandlerProvided("done"),
+
+        onAssertOk: noHandlerProvided("onAssertOk"),
+        onAssertError: noHandlerProvided("onAssertError"),
+
+    }, opts);
+}
+
+
+function miniSpec(opts, state, specs) {
+    var opts = withDefaultOptions(opts);
+
+
     var currentName = [];
 
-    if (!Array.isArray(assertPredicates)) {
-        throw new Error("Assert Predicates must be an array");
-    }
+
     function getName() {
         return currentName.join(' / ');
     }
@@ -66,26 +102,35 @@ function miniSpec(assertPredicates, ok, error, done, state, specs) {
     function it(name, pred) {
         currentName.push(name);
         try {
+            state = opts.start.call(opts, state, {name: getName()});
             pred();
-            state = ok(state, {name: getName()});
+            state = opts.ok.call(opts, state, {name: getName()});
         } catch (e) {
-            state = error(state, {name: getName(), error: e});
+            state = opts.error.call(opts, state, {name: getName(), error: e});
         }
 
         currentName.pop();
     }
 
+    var assertOpts = {
+        onAssertOk: function (data) { opts.onAssertOk(state, data); },
+        onAssertError: function(data) { opts.onAssertError(state, data)}
+    };
 
-    var makeAssert = assertFromPred(getName);
+    var makeAssert = assertFromPred(getName, assertOpts);
     var makeAsserts = function (predsMap) {
         return mapObj(makeAssert, predsMap);
     }
-    var assertObjs = assertPredicates.map(makeAsserts);
+    var assertObjs = opts.assertPredicates.map(makeAsserts);
     var asserts = Object.assign.apply(undefined, assertObjs);
 
 
-    specs(it, it, asserts);
-    return done(state, makeAssert.getAssertCount());
+    function runSpec(spec) {
+        spec(it, it, asserts);
+    }
+
+    (Array.isArray(specs) ? specs : [specs]).forEach(runSpec);
+    return opts.done.call(opts, state, makeAssert.getAssertCount());
 
 }
 

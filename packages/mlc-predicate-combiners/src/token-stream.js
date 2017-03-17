@@ -1,12 +1,4 @@
-export interface Tokens<T> {
-    next():{done:boolean, value?: T};
-    save():SaveState;
-    restore(saved: SaveState):Tokens<T>;
-    // testing helper
-    consumed():number;
-    done():boolean;
-}
-
+import type {Tokens} from "./types"
 
 class TokenStream<T> implements Tokens<T> {
 

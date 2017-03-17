@@ -1,4 +1,6 @@
-const {makeTokenStream, one, oneOf, any, seqOf, maybe, sExpr} = require('../src/predicate-combiners');
+"use strict";
+const {makeTokenStream, one, oneOf, any, seqOf, maybe} = require('../src/predicate-combiners');
+const {sExpr, sExprLift} = require('../src/sexpr');
 const R = require('ramda');
 
 module.exports = (describe, it, expect) => {
@@ -50,7 +52,7 @@ module.exports = (describe, it, expect) => {
     });
 
 
-    describe('Regex', () => {
+    describe('sExpr', () => {
         const checkSExpr = (name, s) => rulesChecker(name, sExpr(s));
 
         it('should parse S-expr lists', () => {
@@ -66,6 +68,11 @@ module.exports = (describe, it, expect) => {
         it('should be nestable', () => {
             checkSExpr('nested', [',', ['/', eq('a'), eq('b')], eq('c')])([
             ]);
+        });
+
+
+        describe('sexprLift', ()=>{
+
         });
     });
 };
