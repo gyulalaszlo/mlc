@@ -48,15 +48,18 @@ const str = (s:string):Predicate<string> => combinator(`string: '${s}'`,
 // - tab
 // - newline / CR
 // - colon (',')
-
-const whiteSpaceChar = char(/[ \t\r\n,]/);
-const optionalWS = any(whiteSpaceChar);
-const requiredWS = atLeastOne(whiteSpaceChar);
-
-
 const comment = rule('comment',[
     str(';'), any(char(/[^\n\r]/))
 ]);
+
+const whiteSpaceChar = oneOf([
+    seqOf([str(';'), any(char(/[^\n\r]/))]),
+    char(/[ \t\r\n,]/),
+    ]);
+const optionalWS = anyOf([whiteSpaceChar]);
+const requiredWS = atLeastOne(whiteSpaceChar);
+
+
 
 // const WS = ["rule", "",
 //     ["*", ["/", whiteSpaceChar, comment]],

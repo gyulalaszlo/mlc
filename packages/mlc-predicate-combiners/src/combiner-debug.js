@@ -1,6 +1,8 @@
 "use strict";
 
-import type {Predicate, Tokens} from './types'
+import * as R from 'ramda'
+
+import type {Predicate, Tokens, PredicateResult} from './types'
 import debug from 'debug'
 
 
@@ -32,13 +34,14 @@ export const combinator = (name: string, combinator: Predicate<T>) =>
         ? combinator
         : (() => {
             let dbg = debug(uniqueIds(`combinator:${name}`));
-            return (t: Tokens<T>): Maybe<Tokens<T>> => {
+            return (t: Tokens<T>):PredicateResult<T> => {
 
                 const input = t.tokens[t.idx];
+                const consumed = t.consumed();
                 dbg(
-                    '==> %s idx=%d', mainIndent.str(), t.consumed(),
+                    '==> %s idx=%d', mainIndent.str(), consumed,
                     'input=', JSON.stringify(input),
-                    'tokens=', JSON.stringify(t.tokens.slice(t.consumed()))
+                    'tokens=', JSON.stringify(t.tokens.slice(consumed))
                 );
 
                 mainIndent.inc();
@@ -47,7 +50,7 @@ export const combinator = (name: string, combinator: Predicate<T>) =>
 
                 dbg(
                     '<== %s idx=%d', mainIndent.str(), t.consumed(),
-                    'res=', v.map((r) => r.consumed()).getOrElse(-1)
+                    'res=', v.map((r) => r.tokens.consumed()).getOrElse(-1)
                 );
                 return v;
             };
