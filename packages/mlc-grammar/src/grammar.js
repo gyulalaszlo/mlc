@@ -22,6 +22,8 @@ import {
     proxy
 } from 'mlc-predicate-combiners';
 
+import {sExpr, sExprLift} from 'mlc-predicate-combiners/sexpr'
+
 import type {Predicate, Tokens} from 'mlc-predicate-combiners'
 
 const char = (rx:RegExp):Predicate<string> => combinator(`char:${rx}`,
@@ -128,13 +130,17 @@ const string = rule("string", [
     str('"'), any(stringCharacter('"')), str('"')]);
 
 // Things that can represent a basic value
-const basicValue = combinator('basic value', oneOf([
-    integer,
-    symbol,
-    key,
-    character,
-    string,
-]));
+// const basicValue = combinator('basic value', oneOf([
+//     integer,
+//     symbol,
+//     key,
+//     character,
+//     string,
+// ]));
+
+
+const basicValue = combinator('basic value', sExpr(
+    [ "/", integer, symbol, key, character, string ]));
 
 
 const listElement = proxy('list element', () =>

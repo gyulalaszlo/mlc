@@ -47,18 +47,18 @@ function cleanLogLine(line) {
     return removeNodeModules(line);
 }
 function assertOkHandler(s, ok) {
-    s.print('.');
+    s.print('.\b');
     return s;
 }
 function assertErrorHandler(s, e) {
-    s.print(Colors.text.red('@'));
+    s.print(Colors.text.red('@\b'));
     return s;
 }
 
 // const char FUNSTUFF = "œ∑†¥øπß∂ƒæΩ≈ç√∫µ≤≥"
 
 function onStart(s, e) {
-    // s.print(Colors.text.blue('<'));
+    s.print(Colors.text.blue('^\b'));
     return s;
 }
 

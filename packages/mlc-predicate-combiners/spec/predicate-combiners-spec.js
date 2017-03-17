@@ -72,7 +72,18 @@ module.exports = (describe, it, expect) => {
 
 
         describe('sexprLift', ()=>{
+            const checkSExpr = (name, s) => rulesChecker(name, sExprLift(s, one));
 
+            it('should lift boolean predicates', () => {
+                const a = v => v === 'a';
+                const b = v => v === 'b';
+                [
+                    [DATA.nothing, []],
+                    [DATA.any, ['*', a]],
+                    [DATA.oneOf, ['/', a, b]],
+                    [DATA.seqOf, [',', a, b]],
+                ].map(([res, s]) => checkSExpr(s[0] ? s[0] : 'empty', s)(res));
+            });
         });
     });
 };
