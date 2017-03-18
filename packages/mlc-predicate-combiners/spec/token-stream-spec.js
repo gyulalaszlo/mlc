@@ -23,12 +23,12 @@ module.exports = function (describe, it, expect) {
         });
 
 
-        describe('#save() and #restore()', () => {
-            it('should save the state of the tokenstream as minimally as possible', () => {
+        describe('#currentIndex() and #restore()', () => {
+            it('should currentIndex the state of the tokenstream as minimally as possible', () => {
                 let t = makeTokenStream(['a', 'b', 'c']);
                 let v = t.next();
                 expect.eq(v.value, 'a');
-                let saved = t.save();
+                let saved = t.currentIndex();
                 t.next();
                 v = t.next();
                 expect.eq(v.value, 'c');

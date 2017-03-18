@@ -21,7 +21,7 @@ class TokenStream<T> implements Tokens<T> {
     }
 
 
-    save(): number {
+    currentIndex(): number {
         return this.idx;
     }
 

@@ -24,17 +24,24 @@ import {
 
 import {sExpr, sExprLift} from 'mlc-predicate-combiners/sexpr'
 
+import {action} from 'mlc-predicate-combiners/src/parser-lifter'
 import type {Predicate, Tokens} from 'mlc-predicate-combiners'
 
-const char = (rx:RegExp):Predicate<string> => combinator(`char:${rx}`,
+const char = (rx: RegExp): Predicate<string> => combinator(`char:${rx}`,
     one(c => rx.test(c)));
 
-const str = (s:string):Predicate<string> => combinator(`string: '${s}'`,
+const str = (s: string): Predicate<string> => combinator(`string: '${s}'`,
     s.length > 1
-        ? seqOf(s.split('').map((ch) => one(c => c === ch)))
+        ? seqOf(s.split('').map((ch) => one(c => c === ch)), (_) => s)
         : one(c => c === s)
 );
 
+// Actions
+
+type Atom = {atom: string}
+const emitAtom = action((t): Atom => ({atom: t}));
+const emitKey = action((t: string): {key:string} => ({key: t.substr(1)}));
+const emitTypeName = action((t: string) => ({type: t.substr(1)}));
 
 // Grammar
 // =======
@@ -48,17 +55,16 @@ const str = (s:string):Predicate<string> => combinator(`string: '${s}'`,
 // - tab
 // - newline / CR
 // - colon (',')
-const comment = rule('comment',[
+const comment = rule('comment', [
     str(';'), any(char(/[^\n\r]/))
 ]);
 
 const whiteSpaceChar = oneOf([
     seqOf([str(';'), any(char(/[^\n\r]/))]),
     char(/[ \t\r\n,]/),
-    ]);
+]);
 const optionalWS = anyOf([whiteSpaceChar]);
 const requiredWS = atLeastOne(whiteSpaceChar);
-
 
 
 // const WS = ["rule", "",
@@ -67,26 +73,34 @@ const requiredWS = atLeastOne(whiteSpaceChar);
 
 
 const atomChar = char(/[^\:\/\\\^\[\]{}();, \t\r\n]/);
-const atom = rule("atom",
-    [atomChar, any(atomChar)]);
+const atom = atLeastOne(atomChar, t => ({atom: t.join('')}));
 
 // Paths are symbols that represent stuff.
 // Unlike keys (which are value constructs when used directly
 // in code), they can be exported and imported from other modules.
 //
 // A path is an atom, and maybe a slash followed by an atom.
-const symbol = rule("symbol", [
-    atom, maybe(seqOf([char(/\//), atom]))]);
+const symbol = oneOf([
+    seqOf([atom, str('/'), atom], t => ({symbol: t[2].atom, from: t[0].atom})),
+    seqOf([atom], t => ({symbol: t[0].atom})),
+    // one(atom, t => ({symbol: t})),
+]);
 
 // Type characters cannot contain the key marker (as
 // it does not make any sense for them
-const typeName = rule("type name", [char(/\^/), symbol]);
+const typeName = rule('type name',
+    [str('^'), symbol], ([_, {symbol, from}]) => ({ type: symbol, from: from  })
+)
+
+    // emitTypeName(rule("type name", [char(/\^/), symbol]));
 
 // A key can contain anything apart from whitespace and
 // structural elements
 const keyChar = char(/[^\\\[\];,{}() \t\r\n]/);
-const key = rule('key', [
-    char(/:/), keyChar, any(keyChar)]);
+const key = rule('key',
+    [str(':'), atLeastOne(keyChar)],
+    t => ({key: t[1].join('')})
+);
 
 // Numbers
 const numberChar = char(/[0-9]/);
@@ -143,7 +157,7 @@ const string = rule("string", [
 
 
 const basicValue = combinator('basic value', sExpr(
-    [ "/", integer, symbol, key, character, string ]));
+    ["/", integer, symbol, key, character, string]));
 
 
 const listElement = proxy('list element', () =>

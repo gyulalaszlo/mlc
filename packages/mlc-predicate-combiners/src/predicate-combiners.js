@@ -26,9 +26,13 @@ import {seqOf} from './base/seq-of'
 import {maybe} from './base/maybe'
 import {combinator} from './combiner-debug'
 
+const  identity = v => v;
+
 // DDL for declaring a rule like a regular parser
-export const rule = (name, sequence) => combinator(name, seqOf(sequence));
-export const atLeastOne = pred => rule(`~at_least_one`, [pred, any(pred)]);
+export const rule = (name, sequence, action) => combinator(name, seqOf(sequence, action));
+export const atLeastOne = (pred, action) => rule(`~at_least_one`, [pred, any(pred)],
+    t => (action || identity)([t[0]].concat(t[1] ? t[1] : []))
+);
 export const maybeSeqOf = rules => maybe(seqOf(rules));
 // Zero, one or more of (any of the `rules` provided)
 export const anyOf = rules => any(oneOf(rules));
@@ -44,16 +48,16 @@ export const interpose =
             ])]);
 
 
-function cache<T>(getter:()=>T):T {
-    let t:T;
-    return ()=> (t ? t : (t = getter()));
+function cache<T>(getter: ()=>T): T {
+    let t: T;
+    return () => (t ? t : (t = getter()));
 }
 
 // Creates a proxy rule that can break circular references:
 // provide a function that returns the rule on the first invocation.
-export const proxy = (name:string, predGetter:()=>Predicate<T>):Predicate<T> => {
+export const proxy = (name: string, predGetter: ()=>Predicate<T>): Predicate<T> => {
     let c = cache(predGetter);
-    return  combinator(`proxy:${name}`,
+    return combinator(`proxy:${name}`,
         (t: Tokens<T>): Maybe<Tokens<T>> => c()(t));
 };
 

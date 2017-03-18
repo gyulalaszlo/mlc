@@ -1,0 +1,18 @@
+"use strict";
+
+console.log("ß¬˙ƒ¨¬å∆ß∫ƒøå∫øƒ¨     MLC-minispec    ¨ƒ©∫ß√¬¨ˆ√∫ß…åß∫ƒ√ç¬…");
+
+var pwd = process.cwd();
+var files = process.argv.slice(1);
+function specPath(fn) {
+    return pwd + '/' + fn;
+}
+
+var DECO = 'ßçΩ≈çµ≈ßçΩ≈çµ≈ç√ˆ´∑';
+
+console.log("ßçΩ≈çµ≈ßçΩ≈çµ≈ç√ˆ´∑   %s  ßçω≈çµ≈ßçω≈çµ≈ç√ˆ´∑")
+
+files.map(specPath);
+
+
+

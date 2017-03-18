@@ -3,7 +3,7 @@ import {Maybe} from 'ramda-fantasy'
 
 export interface Tokens<T> {
     next():{done:boolean, value?: T};
-    save():SaveState;
+    currentIndex():SaveState;
     restore(saved: SaveState):Tokens<T>;
     // testing helper
     consumed():number;
@@ -14,7 +14,10 @@ export interface Tokens<T> {
 export type PredicateMatch<T> = {
     tokens: Tokens<T>,
     start: number,
-    end: number
+    end: number,
+
+    // the value returned after matching the string
+    value: any,
 }
 
 export type PredicateResult<T> = Maybe<PredicateMatch<T>>

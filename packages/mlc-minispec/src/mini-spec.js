@@ -1,24 +1,7 @@
 "use strict";
 
-// curry
-var _c = function _curry(fn) {
-    var args = Array.prototype.slice.call(arguments, 1);
-    return function () {
-        var localArgs = arguments.length > 0 ? Array.prototype.slice.call(arguments, 0) : [];
-        return fn.apply(undefined, args.concat(localArgs));
-    }
-
-};
-var _curry = _c;
-
-// map over an object
-function mapObj(fn, o) {
-    var out = {};
-    Object.keys(o).forEach(function (k) {
-        out[k] = fn(o[k]);
-    });
-    return out;
-}
+var curry = require('./curry');
+var mapObj = require('./map-obj')
 
 // arity-clipped version of the standard map
 function map(fn, l) {
@@ -40,7 +23,9 @@ function assertFromPred(currentNameGetter, opts) {
             var err = pred.apply(undefined, arguments);
             if (err) {
                 opts.onAssertError({name: currentNameGetter()});
-                throw new Error("Failiure in " + JSON.stringify(currentNameGetter()) + "\n" + "==== " + err);
+                var thrown = new Error("Failiure in " + JSON.stringify(currentNameGetter()));
+                thrown.assertText = err.toString();
+                throw thrown;
             }
             opts.onAssertOk({name: currentNameGetter()});
             return true;

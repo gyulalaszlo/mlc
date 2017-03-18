@@ -6,13 +6,18 @@ import {combinator} from '../combiner-debug'
 const {Just, Nothing} = Maybe;
 
 
-export const oneOf = (preds: Array<Predicate<T>>): Predicate<T> =>
+export const oneOf = (preds: Array<Predicate<T>>, action: (t: any)=> any = (v) => v): Predicate<T> =>
     combinator("~oneOf",
         (t: Tokens<T>): Maybe<Tokens<T>> => {
             for (let i = 0, len = preds.length; i < len; ++i) {
-                const saved = t.save();
+                const saved = t.currentIndex();
                 let ret = preds[i](t);
-                if (Maybe.isJust(ret)) return ret;
+                if (Maybe.isJust(ret)) {
+                    const currentValue = ret.getOrElse({value:null}).value;
+                    return ret.map((r)=> Object.assign(r,{
+                        value: currentValue
+                    }));
+                }
                 // restore the state
                 t.restore(saved);
             }

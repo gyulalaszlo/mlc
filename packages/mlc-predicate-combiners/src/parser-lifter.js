@@ -1,22 +1,26 @@
 "use strict";
 
-import type {Predicate, Tokens} from './types'
+import type {Predicate, Tokens, PredicateMatch} from './types'
 import * as R from 'ramda'
 import {Maybe} from 'ramda-fantasy'
 const {Just, Nothing} = Maybe;
 
+type Action = (t:Array<T>)=> any;
 
-export function liftToParser(rule:Predicate<T>, callback:(T)=>any) {
-    return (t:Tokens<T>):Maybe<Tokens<T>> => {
-        const saved = t.save();
 
-        R.slice(saved, res.save());
-        rule(t).map(
-            (res:Tokens<T>)=> res.tokens.slice(saved, res.save()));
+module.exports = {
+    action: R.curryN( 2, (callback:Action, rule:Predicate<T> )=> {
+        return (t:Tokens<T>):Maybe<Tokens<T>> => {
+            const res = rule(t);
+            if (Maybe.isNothing(res)) { return res; }
 
-        t.restore(saved);
-
-    };
+            return res.map((r:PredicateMatch<T>)=>{
+                return Object.assign(r, {
+                    value: callback(r.value),
+                });
+            });
+        };
+    }),
 }
 
 
