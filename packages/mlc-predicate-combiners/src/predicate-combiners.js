@@ -26,26 +26,30 @@ import {seqOf} from './base/seq-of'
 import {maybe} from './base/maybe'
 import {combinator} from './combiner-debug'
 
-const  identity = v => v;
+const identity = v => v;
 
 // DDL for declaring a rule like a regular parser
 export const rule = (name, sequence, action) => combinator(name, seqOf(sequence, action));
 export const atLeastOne = (pred, action) => rule(`~at_least_one`, [pred, any(pred)],
     t => (action || identity)([t[0]].concat(t[1] ? t[1] : []))
 );
-export const maybeSeqOf = rules => maybe(seqOf(rules));
+export const maybeSeqOf = (rules, action) => maybe(seqOf(rules, action));
 // Zero, one or more of (any of the `rules` provided)
-export const anyOf = rules => any(oneOf(rules));
+export const anyOf = (rules, action) => any(oneOf(rules), action);
 
 // represents a list with a separator interposed between the elements
 export const interpose =
-    (interposerPred, elementPred) =>
-        maybeSeqOf([
-            elementPred,
-            anyOf([
-                interposerPred,
+    (interposerPred, elementPred, action = identity) =>
+        maybe(
+            seqOf([
                 elementPred,
-            ])]);
+                any(
+                    seqOf([
+                        interposerPred,
+                        elementPred,
+                    ], t => t[1])
+                )], t => [t[0]].concat(t[1])),
+            action);
 
 
 function cache<T>(getter: ()=>T): T {

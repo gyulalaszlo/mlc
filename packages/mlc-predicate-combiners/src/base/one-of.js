@@ -15,7 +15,7 @@ export const oneOf = (preds: Array<Predicate<T>>, action: (t: any)=> any = (v) =
                 if (Maybe.isJust(ret)) {
                     const currentValue = ret.getOrElse({value:null}).value;
                     return ret.map((r)=> Object.assign(r,{
-                        value: currentValue
+                        value: action(currentValue)
                     }));
                 }
                 // restore the state

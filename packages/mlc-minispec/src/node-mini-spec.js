@@ -48,7 +48,7 @@ function reprint(s, newEvt) {
             break;
 
         case 'error':
-            p('red', 'typing');
+            p('red', 'cross');
             break;
     }
 
@@ -111,13 +111,14 @@ function doneHandler(s, assertCount) {
         console.log();
     });
     // console.log(Deco.pipeish.header(32, "DONE", '     '));
+    console.log("\n");
     console.log(
         Colors.text.cyan("%d nodes"), s.ok.length,
-        Colors.text.yellow(" " + assertCount + " assertions,"),
+        Colors.text.white("\t" + assertCount + " assertions\t"),
         Colors.text.black(
             (s.errors.length > 0)
-                ? Colors.bg.red(" " + s.errors.length + " errors ")
-                : Colors.bg.green(" OK ")
+                ? Colors.bg.red(" " + s.errors.length + " errors \t")
+                : Colors.bg.green("  OK  ")
         )
     );
     return Object.assign(s, {assertCount: assertCount});
