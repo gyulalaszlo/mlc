@@ -2,6 +2,7 @@ module SSA.SSAForm exposing (..)
 
 import Dict exposing (Dict)
 import Codegen.Indented exposing (Line(..), applyIndents, concatLine, concatStatement)
+import SSA.LabeledList exposing (LabeledList)
 
 
 type alias Name =
@@ -87,11 +88,18 @@ type alias Label =
     LabelName
 
 
-type Instruction
-    = BinaryOp Symbol Operator SymbolName SymbolName
-    | FunctionCall Symbol SymbolName (List SymbolName)
-    | UnaryOp Symbol Operator SymbolName
-    | Constant Symbol Value
+type Operation
+    = OpBinary
+    | OpUnary
+    | OpConstant
+    | OpFunctionCall
+
+
+type InstructionBody
+    = BinaryOp Operator SymbolName SymbolName
+    | FunctionCall SymbolName (List SymbolName)
+    | UnaryOp Operator SymbolName
+    | Constant Value
 
 
 
@@ -102,13 +110,13 @@ type Instruction
 --    | Return SymbolName
 --    | Parameter Symbol
 
+type alias Instruction = (Symbol, InstructionBody)
+type alias InstructionList = List Instruction
 
 type alias Block =
     { label : Label
     , inputs : List Symbol
-    , body :
-        List Instruction
-        -- metadata about the kind of node this block is
+    , body : InstructionList
     , node : SSANode
     , symbolsAdded : List Symbol
     , symbols : SymbolScope
@@ -117,6 +125,14 @@ type alias Block =
 
 type alias Blocks =
     List Block
+
+
+type alias BlocksWithLabel =
+    LabeledList String Block
+
+
+
+--    ( String, Blocks )
 
 
 type alias NodeName =
@@ -128,7 +144,7 @@ type
     -- A node where the incoming edges are combined
     -- so the optimizer can combine them with relative
     -- ease
-    = Phi (List NodeName)
+    = Phi Symbol (List NodeName)
     | LocalEntry
     | PublicEntry
 
@@ -239,7 +255,7 @@ ssaTypeToString t =
 ssaEntryToString : SSANodeEntry -> String
 ssaEntryToString e =
     case e of
-        Phi i ->
+        Phi s i ->
             "phi"
 
         LocalEntry ->
@@ -258,12 +274,12 @@ blockHeaderToString : Block -> List Line
 blockHeaderToString { label, node, inputs } =
     let
         args =
-            String.join ", " <| List.map (\( name, t ) -> ssaTypeToString t ++ " " ++ name) inputs
+            String.join " -> " <| List.map (\( name, t ) -> ssaTypeToString t ++ " " ++ name) inputs
     in
-        [ Text <| ssaEntryToString node.entry ++ "  " ++ label ++ "(" ++ args ++ ")" ]
+        [ Text <| ssaEntryToString node.entry ++ "  " ++ label ++ ": " ++ args ]
 
 
-ssaInstructionsToCode : List Instruction -> List Line
+ssaInstructionsToCode : InstructionList -> List Line
 ssaInstructionsToCode i =
     -- 1. figure out blocks needed (jump chain)
     let
@@ -274,32 +290,18 @@ ssaInstructionsToCode i =
             concatStatement [ targetToString s, " = ", e ]
 
         instructionToString : Instruction -> List Line
-        instructionToString i =
+        instructionToString (s,i) =
             case i of
-                BinaryOp s op l r ->
+                BinaryOp op l r ->
                     assignToString s (l ++ " " ++ op ++ " " ++ r)
 
-                UnaryOp s op l ->
+                UnaryOp op l ->
                     assignToString s (op ++ l)
 
-                Constant s v ->
+                Constant v ->
                     assignToString s v
 
-                --                Branch cond t f ->
-                --                    [ Text ("if (" ++  cond  ++ ")")
-                --                    , Indent
-                --                    , Text ("goto " ++ t  ++";")
-                --                    , Text ( "else goto " ++ f  ++ ";")
-                --                    , Outdent
-                --                    ]
-                --                Return s ->
-                --                    concatStatement [ "return ", s ]
-                --                Parameter s ->
-                --                    assignToString s ("INPUT")
-                --
-                --                Jump s ->
-                --                    concatStatement ["goto " ,  s ]
-                FunctionCall s c args ->
+                FunctionCall c args ->
                     assignToString s (c ++ "(" ++ String.join ", " args ++ ")")
     in
         List.concatMap instructionToString i
@@ -310,8 +312,6 @@ ssaBlocksToCode =
     let
         blockWithLabel b =
             List.append (blockHeaderToString b) (ssaInstructionsToCode b.body)
-
-        --            List.append (ssaNodeHeaderToString label node) (ssaInstructionsToCode body)
     in
         List.concatMap blockWithLabel
 
@@ -332,14 +332,15 @@ bool =
     SignedIntegral Bits1
 
 
-block1 =
-    [ Constant ( "i", sizeT ) "0"
-      -- Constant string
-    , Constant ( "s", str ) "Hello world"
-      -- Call strlen
-    , FunctionCall
-        ( "length", sizeT )
-        "strlen"
-        [ "s0" ]
-      --    , Jump "iIsLessThenLengthHeader"
-    ]
+
+--block1 =
+--    [ Constant ( "i", sizeT ) "0"
+--      -- Constant string
+--    , Constant ( "s", str ) "Hello world"
+--      -- Call strlen
+--    , FunctionCall
+--        ( "length", sizeT )
+--        "strlen"
+--        [ "s0" ]
+--      --    , Jump "iIsLessThenLengthHeader"
+--    ]

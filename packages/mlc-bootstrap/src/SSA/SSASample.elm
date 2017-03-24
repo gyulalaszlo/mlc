@@ -11,6 +11,7 @@
 module SSA.SSASample exposing (sample)
 
 import Dict
+import SSA.LabeledList as LabeledList exposing (label)
 import SSA.SSAForm exposing (..)
 
 
@@ -32,7 +33,7 @@ block name entry exit inputs i s =
 
 withLabel : LabelName -> Blocks -> BlocksWithLabel
 withLabel l b =
-    ( l, b )
+    Just ( l, b )
 
 
 blocksWithLabel : LabelName -> SSANodeEntry -> SSANodeExit -> List Symbol -> List Instruction -> List Symbol -> BlocksWithLabel
@@ -56,81 +57,32 @@ boolT =
     SignedIntegral Bits1
 
 
-nDefn =
-    "defn indexOfChar"
-
-
-nStrlen =
-    "let [len (C/strlen s)]"
-
-
-nLoop =
-    "loop [i 0]"
-
-
-nLoopIf =
-    "if (< i len)"
-
-
-nCharIf =
-    "= (nth i s)"
-
-
-nReturnI =
-    "i"
-
-
-nRecur =
-    "recur (+ i 1)"
-
-
-type alias BlocksWithLabel =
-    ( String, Blocks )
-
-
 
 -- MACROS
 -- ======
 
-
-headLabel : Blocks -> Maybe String
-headLabel b =
-    case b of
-        [] ->
-            Nothing
-
-        x :: _ ->
-            Just x.label
+blocksFrom : Blocks -> BlocksWithLabel
+blocksFrom b =
+    LabeledList.from .label b
 
 
 wrap : (SSANodeExit -> BlocksWithLabel) -> BlocksWithLabel -> BlocksWithLabel
-wrap f ( l, body ) =
+wrap f b =
     let
-        --        b = headLabel body
-        --            |> Maybe.map LocalCall
-        --            |> Maybe.withDefault (ReturnCall ("", Void))
-        b =
-            if l == "" then
-                (ReturnCall ( "", Void ))
-            else
-                (LocalCall l)
-
-        ( newLabel, newHead ) =
-            f b
-
-        --        newLabel = newHead.label
+        exitType =
+            LabeledList.label b
+                |> Maybe.map LocalCall
+                |> Maybe.withDefault (ReturnCall ( "", Void ))
     in
-        ( newLabel, List.append newHead body )
-
-
+        LabeledList.concat [f exitType, b]
 
 
 type alias Binding =
     ( Symbol, Value )
 
 
-withBindings : String -> List Binding -> BlocksWithLabel -> BlocksWithLabel
-withBindings blockName binds =
+withBindings : String -> SSANodeEntry -> List Binding -> BlocksWithLabel -> BlocksWithLabel
+withBindings blockName entry binds =
     let
         bindingName t =
             Tuple.first <| Tuple.first t
@@ -150,9 +102,9 @@ withBindings blockName binds =
                 [ { label = name
                   , inputs = []
                   , body =
-                        List.map (\( s, v ) -> Constant s v) binds
+                        List.map (\( s, v ) -> (s, Constant v)) binds
                         -- metadata about the kind of node this block is
-                  , node = SSANode LocalEntry exitType
+                  , node = SSANode entry exitType
                   , symbolsAdded = exported
                   , symbols = KeepSymbolScope
                   }
@@ -180,60 +132,52 @@ defn name args =
 
 let_ : List ( Symbol, Value ) -> BlocksWithLabel -> BlocksWithLabel
 let_ =
-    withBindings "let"
+    withBindings "let" LocalEntry
 
 
 loop : List ( Symbol, Value ) -> BlocksWithLabel -> BlocksWithLabel
 loop =
-    withBindings "loop"
+    withBindings "loop" (Phi ("i", sizeT) ["A", "B"])
 
 
 if_ : BlocksWithLabel -> BlocksWithLabel -> BlocksWithLabel -> BlocksWithLabel
 if_ cond true false =
     let
-        ( condFnName, condFnBlocks ) =
-            cond
-
         n =
             "if"
 
-        -- TODO: use real shit here instead
-        branchBlock name exit =
-            blocksWithLabel (n ++ "." ++ name) LocalEntry exit [] [] []
+        node =
+            Maybe.map2
+                (\t f -> SSANode LocalEntry (BranchExit t f))
+                (label true)
+                (label false)
+                |> Maybe.withDefault (SSANode LocalEntry (ReturnCall ( "<ERROR>", Void )))
 
-        trueB =
-            wrap (branchBlock "true") true
-
-        falseB =
-            wrap (branchBlock "false") false
-
-        label ( l, _ ) =
-            l
-
-        b =
-            { label = n
-            , node = SSANode LocalEntry (BranchExit (label trueB) (label falseB))
-            , body = [ FunctionCall ( "__", boolT ) condFnName [] ]
+        b = blocksFrom
+            [{ label = n
+            , node = node
+            , body = [ ]
             , inputs = []
             , symbolsAdded = []
             , symbols = KeepSymbolScope
-            }
+            }]
+
     in
-        ( n, (b :: (List.concatMap Tuple.second [ cond, trueB, falseB ])) )
+        LabeledList.concat [ cond, b, true, false ]
+
 
 
 constant : SymbolType -> Value -> BlocksWithLabel
 constant t v =
-    ( "CONSTANT"
-    , [ { label = "CONSTANT"
-        , node = SSANode LocalEntry (ReturnCall ( "__", t ))
-        , body = [ Constant ( "__", t ) v ]
-        , symbolsAdded = []
-        , inputs = []
-        , symbols = KeepSymbolScope
-        }
-      ]
-    )
+    blocksFrom
+        [ { label = "CONSTANT:" ++ toString v
+            , node = SSANode LocalEntry (ReturnCall ( "__", t ))
+            , body = [ ( ( "__", t ), Constant  v) ]
+            , symbolsAdded = []
+            , inputs = []
+            , symbols = KeepSymbolScope
+            }
+          ]
 
 
 
@@ -249,106 +193,29 @@ iVar =
     ( "i", sizeT )
 
 
+lenCheck : BlocksWithLabel
+lenCheck =
+    blocksFrom
+        [   { label = toString "i < len"
+            , node = SSANode LocalEntry (LocalCall "if")
+            , body = [(("__", boolT), FunctionCall  "U64.lt" ["i", "len"]) ]
+            , symbolsAdded = []
+            , inputs = []
+            , symbols = KeepSymbolScope
+            }]
+
 sample0 : BlocksWithLabel
 sample0 =
     defn "indexOf" [ ( "c", charT ), ( "s", strT ) ] <|
         let_ [ ( lenVar, "strlen" ) ] <|
             loop [ ( iVar, "0" ) ] <|
                 if_
-                    ( "U64.lt", [] )
+                    lenCheck
                     (constant sizeT "0x00")
                     (constant sizeT "0xffffffff")
 
 
-
---sample2 : Blocks
---sample2 =
---    [   block
---        nDefn
---        PublicEntry
---        (LocalCall "loop.check")
---        [ ( "c", charT ), ( "s", strT ) ]
---        [ Constant ("i", sizeT) "0"
---        , FunctionCall ("len", sizeT) "strlen" ["s"]
---        ]
---
---    , block
---        nStrlen
---        LocalEntry
---        (LocalCall nLoop)
---        [ ("s", strT) ]
---        [ FunctionCall ("len", sizeT) "strlen" ["s"]
---        ]
---    , block
---        nLoop
---        LocalEntry
---        (LocalCall nLoopIf)
---        []
---        [ Constant ("i", sizeT) "0"
---        ]
---
-----    , block
-----        nLoopIf
-----        LocalEntry
-----        (BranchExit nCharIf nReturnI)
---
---
---    , block
---        "loop.check"
---        (Phi [ nDefn, "loop.body" ])
---        (BranchExit "loop.body" "loop.done")
---        [ ( "i", sizeT ), ( "len", sizeT ) ]
---        [ BinaryOp ( "inBounds", boolT ) "<" "i" "len"
---        ]
---
---    , block
---        "loop.body"
---        (LocalEntry)
---        (BranchExit "match.true" "match.false")
---        [ ( "i", sizeT ), ( "s", strT ), ( "c", charT ) ]
---        [ BinaryOp ( "current", charT ) "[]" "s" "i"
---        , BinaryOp ( "isMatch", boolT ) "==" "c" "current"
---        ]
---
---    , block
---        "match.true"
---        LocalEntry
---        (LocalCall "loop.inc")
---        []
---        [ Constant ( "_1", sizeT ) "1"
---        , BinaryOp ( "iNext", sizeT ) "+" "i" "_1"
---        ]
---    , block
---        "match.true"
---        LocalEntry
---        (ReturnCall ( "i", sizeT ))
---        [ ( "i", sizeT ) ]
---        []
---    , block
---        "loop.done"
---        LocalEntry
---        (ReturnCall ( "_minus1", sizeT ))
---        []
---        [ Constant ( "_minus1", sizeT ) "-1"
---        ]
---    ]
-
-
 sample : Blocks
 sample =
-    --    let
-    --        sizeT =
-    --            UnsignedIntegral Bits64
-    --
-    --        char =
-    --            ConstType (SignedIntegral Bits8)
-    --
-    --        str =
-    --            (PointerType char)
-    --
-    --        bool =
-    --            SignedIntegral Bits1
-    --    in
-    --        -- =============================
-    --        --        List.append
-    Tuple.second sample0
+    Maybe.map (\( l, n ) -> n) sample0
+        |> Maybe.withDefault []

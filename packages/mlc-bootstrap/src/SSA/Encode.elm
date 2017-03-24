@@ -12,9 +12,10 @@ module SSA.Encode exposing (..)
 
 -- import Html exposing (Html)
 
-import Json.Encode exposing (Value, array, int, list, object, string)
-import SSA.SSAForm as S exposing (BitWidth(..), Block, Blocks, Instruction(..), Name, Operator, Symbol, SymbolType, ssaTypeToString, widthInBits)
+import Json.Encode exposing (array, int, list, object, string)
+import SSA.SSAForm as S exposing (..)
 
+type alias Value = Json.Encode.Value
 
 name : Name -> Value
 name n =
@@ -61,18 +62,18 @@ symbol ( n, t ) =
 
 
 instruction : Instruction -> Value
-instruction i =
+instruction (s,i) =
     case i of
-        S.BinaryOp s o l r ->
+        S.BinaryOp o l r ->
             list [ string "binary", operator o, string l, string r ]
 
-        S.UnaryOp s o r ->
+        S.UnaryOp o r ->
             list [ string "unary", operator o, string r ]
 
-        S.FunctionCall s n a ->
+        S.FunctionCall n a ->
             list [ string "fn", string n ]
 
-        S.Constant s v ->
+        S.Constant v ->
             list [ string "const" ]
 
 

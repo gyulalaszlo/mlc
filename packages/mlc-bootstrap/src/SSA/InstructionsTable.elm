@@ -1,20 +1,24 @@
 {-
 
-InstructionsTable
--------
+   InstructionsTable
+   -------
 
-<Describe me if possible...>
+   <Describe me if possible...>
 
 -}
+
+
 module SSA.InstructionsTable exposing (..)
 
 import Codegen.Indented exposing (applyIndents)
 import Helpers.Attributes
 import Html exposing (Html, td, text, tr)
 import Html.Attributes exposing (class, colspan, rowspan, style)
-import SSA.SSAForm exposing (Block, Instruction(..), SSANodeEntry(..), SSANodeExit(..), Symbol, SymbolType(..), blockHeaderToString, ssaInstructionsToCode, ssaTypeToString)
+import SSA.SSAForm exposing (..)
+
 
 -- ======================
+
 
 type alias BlockRow =
     { kind : String
@@ -57,67 +61,45 @@ blockRow { kind, type_, name, left, op, right, code, klass } =
             )
         ]
 
+
+
 -- ======================
+
 
 instructionsToString i =
     String.join "\n" <| applyIndents <| ssaInstructionsToCode i
 
--- ======================
 
-instructionTableRow : Instruction -> String -> String -> SymbolType -> String -> String -> String -> Html msg
-instructionTableRow i kind name t op l r =
-    let
-        b = { emptyBlockRow
-            | klass = "instruction-row"
-            , kind = kind
-            , type_ = ssaTypeToString t
-            , name = name
-            , left = l
-            , right = r
-            , code = instructionsToString [i]
-            }
-    in
-        blockRow b
---        tr [ class "instruction-row" ]
---            [ td [ class "op-kind" ] [ text kind ]
---            , td [ class "op-type" ] [ text <| ssaTypeToString t ]
---            , td [ class "op-name" ] [ text name ]
---            , td [ class "op-left" ] [ text l ]
---            , td [ class "op-op" ] [ text op ]
---            , td [ class "op-right" ] [ text r ]
---            , td [ class "code" ] [ text <| instructionsToString [ i ] ]
---            ]
+
+-- ======================
 
 
 instructionView : Instruction -> Html msg
-instructionView i =
+instructionView (s,i) =
     let
-        opBase (n,t) =
+        opBase ( n, t ) =
             { emptyBlockRow
-            | code = instructionsToString [ i ]
-            , name = n
-            , type_ = ssaTypeToString t
+                | code = instructionsToString [ (s,i) ]
+                , name = n
+                , type_ = ssaTypeToString t
             }
+
+        b = opBase s
 
         opData =
             case i of
-                BinaryOp s o l r ->
-                    let b = opBase s in { b | kind = "BINARY", op = o, left = l, right = r }
-    --                instructionTableRow i "BINARY" n t o l r
+                BinaryOp o l r ->
+                        { b | kind = "BINARY", op = o, left = l, right = r }
 
-                UnaryOp s o r ->
-                    let b = opBase s in { b | kind = "UNARY", op = o, right = r }
-    --                instructionTableRow i "UNARY" n t o "" r
+                UnaryOp o r ->
+                        { b | kind = "UNARY", op = o, right = r }
 
-                Constant s r ->
-                    let b = opBase s in { b | kind = "CONSTANT", right = r }
-    --                instructionTableRow i "CONSTANT" n t "" "" r
+                Constant  r ->
+                        { b | kind = "CONSTANT", right = r }
 
-                FunctionCall s c args ->
-                    let b = opBase s in { b | kind = "FN", op = "()", right = (String.join ", " args) }
-
---                    instructionTableRow i "FN" n t "()" c (toString args)
-     in
+                FunctionCall c args ->
+                        { b | kind = "FN", op = "()", left = c, right = (String.join ", " args) }
+    in
         blockRow opData
 
 
@@ -137,30 +119,15 @@ opTd klass s =
 blockHeader : Block -> List (Html msg)
 blockHeader block =
     [ tr
-        [ class "block-header" ]
-        [ Html.td [ colspan 6 ]
-            [ Html.h5 [] [ text block.label ]
-            ]
-        , td
-            [ class "code"
-            , rowspan 2
-            ]
-            [ codeView <|
-                String.join "\n" <|
-                    applyIndents <|
-                        blockHeaderToString
-                            block
-            ]
+        [ class "block-header-th" ]
+        [ th "op-type" "T"
+        , th "op-type" "Type"
+        , th "op-name" "Name"
+        , th "op-left" "Left"
+        , th "op-op" "Op"
+        , th "op-right" "Right"
+        , th "op-code" ""
         ]
---    , tr
---        [ class "block-header-th" ]
---        [ th "op-type" "T"
---        , th "op-type" "Type"
---        , th "op-name" "Name"
---        , th "op-left" "Left"
---        , th "op-op" "Op"
---        , th "op-right" "Right"
---        ]
     ]
 
 
@@ -179,61 +146,79 @@ blockInput ( n, t ) =
 blockEntry : Block -> List (Html msg)
 blockEntry b =
     let
-        phiEntryFrom n =
-            tr
-                [ class "block-entry block-entry-phi" ]
-                [ opTd "kind" "PHI"
-                , opTd "type" ""
-                , opTd "name" ""
-                , opTd "left" ""
-                , opTd "op" ">-?"
-                , opTd "right" n
-                ]
+        code = String.join "\n" <| applyIndents <| blockHeaderToString b
+
+        phiBaseRow =
+            { emptyBlockRow
+            | kind = "PHI"
+            , klass = "block-entry block-entry-phi"
+            }
+
+        phiEntryFrom (n,t) edge =
+            { phiBaseRow
+            | name = n
+            , type_ = ssaTypeToString t
+            , op = ">-?"
+            , left = edge
+            }
+
+        phiEntries s ns =
+            {phiBaseRow | code = code } :: List.map (phiEntryFrom s) ns
+                |> List.map blockRow
+
 
         localEntry =
             tr
                 [ class "block-entry block-entry-local" ]
                 [ opTd "kind" "LOCAL"
                 , td [ colspan 5 ] []
+                , td [ class "code" ] [ text code ]
+                ]
+        globalEntry =
+            tr
+                [ class "block-entry block-entry-global" ]
+                [ opTd "kind" "GLOBAL"
+                , td [ colspan 5 ] []
+                , td [ class "code" ] [ text code ]
                 ]
     in
         case b.node.entry of
-            Phi ns ->
-                List.map phiEntryFrom ns
+            Phi s ns ->
+                phiEntries s ns
 
             LocalEntry ->
                 [ localEntry ]
 
-            _ ->
-                []
+            PublicEntry ->
+                [ globalEntry ]
 
 
 blockExit : Block -> List (Html msg)
 blockExit b =
     let
-        exitRow kind op right =
+        exitRow kind op left right =
             [ { emptyBlockRow
                 | klass = "block-exit block-exit-" ++ kind
                 , kind = String.toUpper kind
                 , op = op
                 , right = right
+                , left = left
               }
             ]
     in
         List.map blockRow <|
             case b.node.exit of
                 BranchExit t f ->
-                    exitRow "branch" "<->" f
+                    exitRow "branch" "<->" t f
 
                 LocalCall n ->
-                    exitRow "local" "->" n
+                    exitRow "local" "->" "" n
 
                 ReturnCall ( n, t ) ->
-                    exitRow "return" "RET" n
+                    exitRow "return" "RET" "" n
 
                 _ ->
                     []
-
 
 
 symbolsAdded : Block -> List (Html msg)
@@ -260,7 +245,7 @@ blockView b =
     in
         [ Html.thead [] <| blockHeader b
         , Html.tbody [] <| blockEntry b
-          --        , Html.tbody [] <| List.map blockInput inputs
+        , Html.tbody [] <| List.map blockInput inputs
         , Html.tbody [] <| List.map instructionView body
         , Html.tbody [] <| symbolsAdded b
         , Html.tbody [] <| blockExit b

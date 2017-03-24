@@ -67,9 +67,20 @@ table.ssa-table { width: 100%; }
 .kind-unknown-td { color: #999; font-size: 0.8em; }
 
 thead .block-header td { border-top: 2px solid #ccc; }
-thead .block-header-th th { font-size: 0.8em; color: #999; font-weight: normal; }
+thead .block-header-th th { font-size: 0.8em; color: #999; font-weight: normal; padding-top:4em; }
+
 thead .block-header h5 { margin:0; padding:3px 5px; backround: #cfc; padding-top:2em; }
-thead .block-header .code { color: #aaa; font-weight: normal; }
+thead .block-header .code { color: #aaa; font-weight: normal; vertical-align:bottom; padding-top:2.5em; }
+
+tbody tr.block-symbols-exported td.op-code,
+tbody tr.block-entry.block-entry-phi td.op-code,
+.block-entry .code, .block-entry .op-code,
+.block-exit .code, .block-exit .op-code { background: none; font-weight: normal; color: #aaa;  }
+.block-entry-local .code { color: #a60; }
+.block-entry-global .code { color: #f70; }
+.block-exit .code {}
+
+.block-entry .code, .block-entry .op-code { padding-left: 2em; }
 
 
 thead:hover,
@@ -78,7 +89,7 @@ tbody:hover tr:hover td { background: #ff0; }
 
 
 td.op-code,
-td.code { border-top: 1px dotted #dcb; border-left: 3px solid #555; color: #543; font-weight: bold; padding-left: 2em; }
+td.code { border-top: 1px dotted #dcb; border-left: 3px solid #555; color: #543; font-weight: bold; padding-left: 5em; }
 
 td.op-kind { background: #ccc; color: #999; font-size: 0.8em; }
 td.op-name { text-align:right; font-weight: bold; }
@@ -88,7 +99,7 @@ td.op-type { font-style: italic; color: #765; }
 
 
 tbody tr.block-input td { background-color: #cfe; }
-tbody tr.block-entry td { background-color: #cfc; }
+tbody tr.block-entry td { background-color: #fc9; }
 tbody tr.block-exit td { background-color: #efc; }
 tbody tr.block-symbols-exported td { background-color: #eff; }
 tbody tr.block-symbols-exported td.op-code { color: #aaa; font-weight:normal;}
