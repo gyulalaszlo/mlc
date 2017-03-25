@@ -9,16 +9,21 @@ GraphLike
 module GraphLike exposing (..)
 
 import Dict exposing (Dict)
+import GraphLike.Types as Types
+import GraphLike.EdgeReduce as EdgeReduce
 import List.Extra
+import Set
+
+
 
 
 
 -- import Html exposing (Html)
 
-type alias GraphLike comparable v =
-    { edges : Dict comparable (List comparable)
-    , nodes: Dict comparable v
-    }
+type alias GraphLike comparable v = Types.GraphLike comparable v
+type alias Node comparable v = Types.Node comparable v
+
+
 
 
 -- Semigroup
@@ -122,49 +127,7 @@ unorderedReduce f s g =
             g.nodes
 
 
-
-threadedReduce :
-    (comparable -> v -> s -> s) -- on leaf
-    -> (comparable -> comparable -> v -> s -> s) -- on single-edge
-    -> (comparable -> List comparable -> v -> s -> List s) -- on split
-    -> (List comparable -> comparable -> v -> List s -> s) -- on merge
-    -> comparable
-    -> s
-    -> GraphLike comparable v
-    -> s
-threadedReduce leaf single split k s g =
-    let
-        edgesFor k =
-            Dict.get k g.edges
-                |> Maybe.withDefault []
-
-        recursive k s =
-            Dict.get k g.nodes
-                |> Maybe.map (\v -> callFn k v s)
-                |> Maybe.withDefault s
-
-        callFn k v s =
-            let
-                edges = edgesFor k
-
-                splitStates edges =
-                    List.Extra.zip edges (split k edges v s)
-
-                reduced = case edges of
-                    [] -> leaf k v s
-
-                    [e] -> recursive e (single k e v s)
-
-                    _ -> List.map
-                            (\(e,splitS) -> recursive e splitS)
-                            splitStates
-
-            in
-                reduced
-
---            f k v (edgesFor k) s
-
-    in
-        Dict.get k g.nodes
-            |> Maybe.map (\v -> callFn k v)
-            |> Maybe.withDefault s
+{-
+    Alias for EdgeReduce.edgeReduce for details
+-}
+--edgeReduce = EdgeReduce.edgeReduce

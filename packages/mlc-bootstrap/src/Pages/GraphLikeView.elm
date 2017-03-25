@@ -10,7 +10,7 @@ module Pages.GraphLikeView exposing (..)
 
 import Dict
 import GraphLike
-import Html exposing (Html, div, td, text)
+import Html exposing (Html, div, td, th, text)
 import Html.Attributes exposing (class, style)
 import SSA.Compile exposing (BlockBase, BlockGraph)
 import Svg
@@ -27,8 +27,8 @@ graphLikeView g =
 
         node k n =
             Html.tr []
-                [ td [] [text k ]
-                , td [] [text (toString n)]
+                [ th [ class "graph-node-label" ] [text k ]
+                , td [ class "graph-node-value" ] [text (toString n)]
                 ]
 
         edges k =
