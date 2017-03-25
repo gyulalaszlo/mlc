@@ -19,6 +19,8 @@ type alias GraphLike comparable v =
     { edges : Dict comparable (List comparable)
     , nodes: Dict comparable v
     }
+
+
 -- Semigroup
 concat : (comparable -> (comparable,comparable)) -> GraphLike comparable v -> GraphLike comparable v -> GraphLike comparable v
 concat keySplitFn a b =
@@ -118,6 +120,7 @@ unorderedReduce f s g =
             (\k v s -> f k v (edgesFor k) s)
             s
             g.nodes
+
 
 
 threadedReduce :
