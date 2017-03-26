@@ -11,9 +11,13 @@
 module SSA.InstructionsTable exposing (..)
 
 import Codegen.Indented exposing (applyIndents)
+import GraphLike
+import GraphLike.EdgeReduce exposing ( mapNodesToList)
+import GraphLike.Types exposing (NodeWithEdges)
 import Helpers.Attributes
 import Html exposing (Html, td, text, tr)
 import Html.Attributes exposing (class, colspan, rowspan, style)
+import SSA.Compile exposing (BlockBase, BlockGraph, EntryKind(InLocal, InMerge, InPublic), ExitKind(OutBranch, OutLocal, OutReturn))
 import SSA.SSAForm exposing (..)
 
 
@@ -116,7 +120,7 @@ opTd klass s =
     td [ class <| "op-" ++ klass ] [ text s ]
 
 
-blockHeader : Block -> List (Html msg)
+blockHeader : BlockBase -> List (Html msg)
 blockHeader block =
     [ tr
         [ class "block-header-th" ]
@@ -143,10 +147,11 @@ blockInput ( n, t ) =
         ]
 
 
-blockEntry : Block -> List (Html msg)
-blockEntry b =
+blockEntry : List String -> BlockBase -> List (Html msg)
+blockEntry ins b =
     let
-        code = String.join "\n" <| applyIndents <| blockHeaderToString b
+--        code = String.join "\n" <| applyIndents <| blockHeaderToString b
+        code = ""
 
         phiBaseRow =
             { emptyBlockRow
@@ -154,16 +159,17 @@ blockEntry b =
             , klass = "block-entry block-entry-phi"
             }
 
-        phiEntryFrom (n,t) edge =
+--        phiEntryFrom (n,t) edge =
+        phiEntryFrom edge =
             { phiBaseRow
-            | name = n
-            , type_ = ssaTypeToString t
+            | name = ""
+            , type_ = "" --ssaTypeToString t
             , op = ">-?"
             , left = edge
             }
 
-        phiEntries s ns =
-            {phiBaseRow | code = code } :: List.map (phiEntryFrom s) ns
+        phiEntries  =
+            {phiBaseRow | code = code } :: List.map phiEntryFrom ins
                 |> List.map blockRow
 
 
@@ -182,19 +188,19 @@ blockEntry b =
                 , td [ class "code" ] [ text code ]
                 ]
     in
-        case b.node.entry of
-            Phi s ns ->
-                phiEntries s ns
+        case b.entry of
+            InMerge ->
+                phiEntries
 
-            LocalEntry ->
+            InLocal ->
                 [ localEntry ]
 
-            PublicEntry ->
+            InPublic ->
                 [ globalEntry ]
 
 
-blockExit : Block -> List (Html msg)
-blockExit b =
+blockExit : List String ->  BlockBase -> List (Html msg)
+blockExit  outs b =
     let
         exitRow kind op left right =
             [ { emptyBlockRow
@@ -207,18 +213,20 @@ blockExit b =
             ]
     in
         List.map blockRow <|
-            case b.node.exit of
-                BranchExit t f ->
-                    exitRow "branch" "<->" t f
+            case b.exit of
+                OutBranch ->
+                    case outs of
+                        [t,f] -> exitRow "branch" "<->" t f
+                        _ -> []
 
-                LocalCall n ->
-                    exitRow "local" "->" "" n
+                OutLocal  ->
+                    case outs of
+                        [t] -> exitRow "local" "->" "" t
+                        _ -> []
 
-                ReturnCall ( n, t ) ->
-                    exitRow "return" "RET" "" n
+                OutReturn  ->
+                    exitRow "return" "RET" ""  ""
 
-                _ ->
-                    []
 
 
 symbolsAdded : Block -> List (Html msg)
@@ -237,18 +245,18 @@ symbolsAdded b =
         List.map symbolAdded b.symbolsAdded
 
 
-blockView : Block -> List (Html msg)
-blockView b =
+blockView : NodeWithEdges String BlockBase -> List (Html msg)
+blockView (ins, (label,b), outs) =
     let
-        { label, body, node, inputs } =
+        { body } =
             b
     in
         [ Html.thead [] <| blockHeader b
-        , Html.tbody [] <| blockEntry b
-        , Html.tbody [] <| List.map blockInput inputs
+        , Html.tbody [] <| blockEntry ins b
+--        , Html.tbody [] <| List.map blockInput inputs
         , Html.tbody [] <| List.map instructionView body
-        , Html.tbody [] <| symbolsAdded b
-        , Html.tbody [] <| blockExit b
+--        , Html.tbody [] <| symbolsAdded b
+        , Html.tbody [] <| blockExit outs b
           --    , Html.thead [] <| blockFooter label node
         ]
 
@@ -256,3 +264,11 @@ blockView b =
 codeView : String -> Html msg
 codeView c =
     Html.pre [] [ Html.code [] [ text c ] ]
+
+instructionsTable : NodeWithEdges String BlockBase -> Html msg
+instructionsTable b =
+        Html.table
+            [ class "ssa-table"
+            , style [ ( "width", "100%" ) ]
+            ]
+            <| blockView b

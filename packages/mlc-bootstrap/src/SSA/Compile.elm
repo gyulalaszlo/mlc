@@ -12,11 +12,15 @@ module SSA.Compile exposing (..)
 
 -- import Html exposing (Html)
 
-import GraphLike exposing (GraphLike)
+import GraphLike exposing (GraphLike, mapNodes)
+import GraphLike.EdgeReduce exposing ( filterMapNodes, foldNodes)
+import GraphLike.Types exposing (NodeWithEdges)
 import SSA.Block exposing (canMerge, mergeBlockPair)
 import Dict exposing (Dict)
 import SSA.SSAForm exposing (..)
 import List.Extra exposing (groupWhileTransitively, span, takeWhile)
+import Set
+
 
 
 {-
@@ -43,6 +47,7 @@ type alias NodeBase =
 
 
 type alias BlockGraph = GraphLike String BlockBase
+type alias BlockNode = NodeWithEdges String BlockBase
 
 type alias BlockBase =
     { body: InstructionList
@@ -92,52 +97,57 @@ toGraphLike bs =
 --
 --blocksToGraphLike : Blocks -> GraphLike
 
-{-
-    Folds a list as a chain of labeled elements.
-    Starting with the head element of the list.
-
-    keyFn:
-        returns the label to use for an element
-
-    foldFn:
-        folds the state with the current element in the chain and
-        returns a pair of the labels for the next step and the
-        updated state.
-
-    s:
-        initial state
+combineLocalCalls : BlockGraph -> BlockGraph
+combineLocalCalls g =
+    let
+        combineList : NodeWithEdges String BlockBase -> Maybe (String,String)
+        combineList (_, (l,n), outs) =
+            let
+                combine : String -> BlockBase -> Maybe (String, String)
+                combine ol on =
+                    case (n.exit, on.entry) of
+                        (OutLocal, InLocal) -> Just (l, ol)
+                        _ -> Nothing
 
 
+            in
+                -- We can only combine nodes with single in-out connection
+                case outs of
+                    [ol] ->
+                        GraphLike.node ol g
+                            |> Maybe.andThen (combine ol)
+--                            |> Maybe.map (\(l,r)-> s)
+--                            |> Maybe.withDefault s
 
--}
-
-
---foldChain : (v -> comparable) -> ( (s,v) -> List (s,v) ) -> ( List (s,v) -> (s,v) ) -> (v -> s -> s) -> s -> List v -> Result comparable s
---foldChain keyFn foldFn init seq =
---    case seq of
---        [] -> Ok init
---        x :: _ ->
---            let
---                dict = Dict.fromList <| List.map (\e -> (keyFn  e, e)) seq
---
-----                foldEl : v -> s -> s
-----                foldEl e s =
-----                    let
-----                        (l, newS) = foldFn e s
-----                    in
-----                        fold l newS
---
---                fold : (comparable, s) -> Result comparable s
---                fold (label,s) =
---                    case Dict.get label dict of
---                        Nothing -> Err label
---                        Just b -> fold <| foldFn b s
---
---            in
---                fold (keyFn x, init)
+                    _ -> Nothing
 
 
-type alias FoldState = (Blocks, Block)
+        merged = filterMapNodes combineList g
+
+        froms = Set.fromList <| List.map Tuple.first merged
+        tos = Set.fromList <| List.map Tuple.second merged
+
+
+        isHead (l,r) = not <| Set.member l tos
+        isTail (l,r) = not <| Set.member r froms
+
+        (tails, nonTails) = List.partition isTail merged
+
+        init = List.map (\(l,r) -> [l,r]) tails
+
+        mergable r rest path =
+            let (m,nm) = List.partition (\(ll, rr) -> ll == r) rest
+            in
+               List.concatMap (\(l,r) -> mergable r nm <| r :: path) m
+
+
+
+
+
+    in
+        g
+
+
 
 concatLocalCallBlocks : Blocks -> Blocks
 concatLocalCallBlocks b =
@@ -145,62 +155,28 @@ concatLocalCallBlocks b =
 
         g = toGraphLike b
 
+
+
+        combineList : NodeWithEdges String BlockBase -> Maybe (String, String)
+        combineList (_, (l,n), outs) =
+            let
+                combine : String -> BlockBase -> Maybe (String, String)
+                combine ol on =
+                    case (n.exit, on.entry) of
+                        (OutLocal, InLocal) -> Just (l, ol)
+                        _ -> Nothing
+            in
+                -- We can only combine nodes with single in-out connection
+                case outs of
+                    [ol] ->
+                        GraphLike.node ol g
+                            |> Maybe.andThen (combine ol)
+                    _ -> Nothing
+
         -- pick nodes with single strings
 
 
         -- get a temporary dict for our needs.
---        blocksDict =
---            Dict.fromList <| List.map (\bl -> (bl.label, bl)) b
---
---        mergableNodes n =
---            case n.node.exit of
---                LocalCall
---        bs =List.filterMap () b
-
-
---        foldNext : Block -> FoldState -> (String, FoldState)
---        foldNext b (bs, tmp) =
---            if canMerge tmp b then
---                (bs, mergeBlockPair tmp b)
---            else
---                (bs ++ [tmp], b)
-
---        c = foldChain .label foldNext
-
---        foldBlocks : (Block -> FoldState -> (String, FoldState)) -> (String, FoldState) -> Dict String Block
-
-
---        -- we can merge two nodes if a calls b with a LocalCall, b only
---        -- enters locally and the symbol scope is kept the same
---        canMerge : Block -> Block  -> Bool
---        canMerge a b =
---            case (a.node.exit, b.node.entry, b.symbols) of
---                (LocalCall _, LocalEntry, KeepSymbolScope) -> True
---                _ -> False
---
---        -- merges two blocks
---        mergeBlockPair : Block -> Block  -> Block
---        mergeBlockPair head last =
---            { label = head.label
---            , inputs = head.inputs ++ last.inputs
---            , body = head.body ++ last.body
---            , node = SSANode head.node.entry last.node.exit
---            , symbolsAdded = head.symbolsAdded ++ last.symbolsAdded
---            , symbols = head.symbols
---            }
---
---
---
---        mergeBlocks : Blocks -> Blocks
---        mergeBlocks bs =
---            case bs of
---                [] -> []
---                x :: xs ->
---                    [ List.foldl (\b m -> mergeBlockPair m b) x xs ]
---
---
---
-
         foldBlocks : Blocks -> Blocks
         foldBlocks bs =
             case bs of
@@ -222,3 +198,6 @@ concatLocalCallBlocks b =
 
     in
         foldBlocks b
+
+
+

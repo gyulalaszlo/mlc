@@ -12,13 +12,15 @@ module SSA.Main exposing (..)
 
 import Codegen.Indented exposing (applyIndents)
 import Dict
+import GraphLike.EdgeReduce exposing (mapNodesToList)
 import Html.Events exposing (onClick)
 import Pages.GraphLikeView exposing (graphLikeView)
+import Pages.Optimizer as Optimizer
 import SSA.Compile exposing (BlockGraph, concatLocalCallBlocks, toGraphLike)
 import Helpers.Attributes
 import Html exposing (Html, div, td, text, tr)
 import Html.Attributes exposing (class, colspan, rowspan, style)
-import SSA.InstructionsTable exposing (blockView)
+import SSA.InstructionsTable exposing (blockView, instructionsTable)
 import Json.Encode
 import SSA.Encode
 import SSA.SSAForm as SSAForm exposing (..)
@@ -39,12 +41,14 @@ type Code
 type alias Model =
     { code: Code
     , shown: PageShown
+    , optimizer: Optimizer.Model
     }
 
 
 initialModel =
     { code = HasNoCode
-    , shown = BlocksView
+    , shown = GraphView
+    , optimizer = Optimizer.initialModel
     }
 
 
@@ -52,6 +56,7 @@ initialModel =
 type Msg
     = Show Blocks
     | ShowPage PageShown
+    | OptimizerMsg Optimizer.Msg
 
 
 
@@ -63,50 +68,53 @@ update msg model =
 
         ShowPage p -> ({ model | shown = p }, Cmd.none )
 
+        OptimizerMsg m ->
+            let
+                (sm, sc) = Optimizer.update m model.optimizer
+            in
+                ({model | optimizer = sm}, Cmd.map OptimizerMsg sc)
+
 
 view : Model -> Html Msg
-view {shown, code} =
+view {shown, code, optimizer} =
         case code of
             HasNoCode ->
                 Html.text "No SSA code"
 
             HasCode blocks ->
-                Html.div []
-                    [ div [ class "json-head" ]
-                        [ Html.button [ onClick (ShowPage JsonView) ] [ text "Show JSON" ]
-                        , Html.button [ onClick (ShowPage BlocksView) ] [ text "Show Blocks" ]
-                        , Html.button [ onClick (ShowPage GraphView) ] [ text "Show Graph" ]
+                div [class "compiler-view"]
+                    [ div
+                        [class "step-view"]
+                        [ Html.map OptimizerMsg <| Optimizer.view optimizer
                         ]
-                    , pageView shown blocks
+
+                    , div
+                        [class "code-view"]
+                        [ headerView
+                        , pageView shown blocks optimizer
+                        ]
                     ]
---                    [ instructionsTable blocks
---                    , Html.h2 [] [ text "concat" ]
---                    , Html.hr [] []
---                    , instructionsTable <| concatLocalCallBlocks blocks
---                    , graphLikeView blocks
---                    , jsonView isJsonShown blocks
---                    ]
 
 
-pageView : PageShown -> Blocks -> Html Msg
-pageView s bs =
-    case s of
-        JsonView -> jsonView bs
-        BlocksView ->  instructionsTable bs
-        GraphView -> graphLikeView (toGraphLike bs)
+headerView : Html Msg
+headerView =
+    div
+        [ class "json-head" ]
+        [ Html.button [ onClick (ShowPage JsonView) ] [ text "Show JSON" ]
+        , Html.button [ onClick (ShowPage BlocksView) ] [ text "Show Blocks" ]
+        , Html.button [ onClick (ShowPage GraphView) ] [ text "Show Graph" ]
+        ]
 
-
-instructionsTable : Blocks -> Html msg
-instructionsTable b =
+pageView : PageShown -> Blocks -> Optimizer.Model -> Html Msg
+pageView s bs optimizer =
     let
-        t =
-            List.concatMap blockView b
+        optimized = Optimizer.runSteps optimizer <| toGraphLike bs
     in
-        Html.table
-            [ class "ssa-table"
-            , style [ ( "width", "100%" ) ]
-            ]
-            t
+        case s of
+            JsonView -> jsonView bs
+            BlocksView ->  div [] <| mapNodesToList instructionsTable optimized
+            GraphView -> graphLikeView optimized
+
 
 
 jsonView : Blocks -> Html Msg

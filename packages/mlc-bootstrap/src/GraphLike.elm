@@ -12,7 +12,7 @@ import Dict exposing (Dict)
 import GraphLike.Types as Types
 import GraphLike.EdgeReduce as EdgeReduce
 import List.Extra
-import Set
+import Set exposing (Set)
 
 
 
@@ -24,6 +24,9 @@ type alias GraphLike comparable v = Types.GraphLike comparable v
 type alias Node comparable v = Types.Node comparable v
 
 
+node : comparable -> GraphLike comparable v -> Maybe v
+node k g =
+    Dict.get k g.nodes
 
 
 -- Semigroup
@@ -127,7 +130,12 @@ unorderedReduce f s g =
             g.nodes
 
 
-{-
-    Alias for EdgeReduce.edgeReduce for details
--}
---edgeReduce = EdgeReduce.edgeReduce
+
+
+
+
+--removeNodes : Set comparable -> GraphLike comparable v -> GraphLike comparable v
+--removeNodes ks g = removeNodes_ (incomingEdges g) ks g
+
+
+

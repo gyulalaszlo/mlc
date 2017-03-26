@@ -67,7 +67,7 @@ table.ssa-table { width: 100%; }
 .kind-unknown-td { color: #999; font-size: 0.8em; }
 
 thead .block-header td { border-top: 2px solid #ccc; }
-thead .block-header-th th { font-size: 0.8em; color: #999; font-weight: normal; padding-top:4em; }
+thead .block-header-th th { font-size: 0.8em; color: #999; font-weight: normal; }
 
 thead .block-header h5 { margin:0; padding:3px 5px; backround: #cfc; padding-top:2em; }
 thead .block-header .code { color: #aaa; font-weight: normal; vertical-align:bottom; padding-top:2.5em; }
@@ -89,7 +89,7 @@ tbody:hover tr:hover td { background: #ff0; }
 
 
 td.op-code,
-td.code { border-top: 1px dotted #dcb; border-left: 3px solid #555; color: #543; font-weight: bold; padding-left: 5em; }
+td.code { border-top: 1px dotted #dcb; border-left: 3px solid #555; color: #543; font-weight: bold; padding-left: 5em; width: 50%; }
 
 td.op-kind { background: #ccc; color: #999; font-size: 0.8em; }
 td.op-name { text-align:right; font-weight: bold; }
@@ -103,6 +103,28 @@ tbody tr.block-entry td { background-color: #fc9; }
 tbody tr.block-exit td { background-color: #efc; }
 tbody tr.block-symbols-exported td { background-color: #eff; }
 tbody tr.block-symbols-exported td.op-code { color: #aaa; font-weight:normal;}
+
+
+
+/* --===-=-=-=-=-=-=-=-= */
+
+.code-view { position: absolute; left: 0; right:20em; background: #eee; overflow:scroll; top: 0; bottom:0; }
+.step-view { position: absolute; width: 20em; right: 0; }
+
+
+/* --===-=-=-=-=-=-=-=-= */
+
+.step-enabled,
+.step-disabled { cursor: pointer; }
+
+.step-enabled:hover,
+.step-disabled:hover { background: #ddd; }
+
+.step-disabled { color: #aaa; font-style: italic; }
+.step-enabled { color: #555; }
+
+
+.node-base-block {  background: #fff; padding: 0.5em 1em; margin: 2em; box-shadow: 1em 1em 1em rgba(0,0,0,0.05); }
                   """
                   ]
 

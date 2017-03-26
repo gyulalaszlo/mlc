@@ -6,43 +6,18 @@ EdgeReduce
 <Describe me if possible...>
 
 -}
-module GraphLike.EdgeReduce exposing (foldNodes)
+module GraphLike.EdgeReduce exposing (foldNodes, foldlNodes, foldrNodes, mapNodesToList, filterMapNodes)
 
 import Dict exposing (Dict)
-import GraphLike.Types exposing (GraphLike, Node)
+import GraphLike.Types exposing (GraphLike, Node, NodeWithEdges)
 import List.Extra
 import Set exposing (Set)
 
 
 
-
 {-
-    Folds a node with the input and output label list
+    Returns a dict of label -> (labels of incoming edge sources)
 -}
-type alias FoldNode comparable v s = List comparable -> Node comparable v  -> List comparable -> s -> s
-
-
---{-
---    Folds a single endge into the state
----}
---type alias ReduceEdge comparable v s = Node comparable v -> Node comparable v -> s -> s
---{-
---    When the reduce encounters a node with multiple outputs, this function is used
---    to create a new state for each outgoing branch.
----}
---type alias SplitState comparable v s = Node comparable v -> List (Node comparable v) -> s -> List s
---{-
---    When the reduce encounters a node with multiple inputs, this function is used
---    to create a new state from the incoming branches
----}
---type alias MergeStates comparable v s = List (Node comparable v) -> Node comparable v -> List s -> s
---
---type alias StartLabel comparable = comparable
---type alias VisitedEdges comparable = Set (comparable, comparable)
---
-
-type alias NodeWithEdges comparable v = (List comparable, Node comparable v, List comparable)
-
 incomingEdges : GraphLike comparable v -> Dict comparable (List comparable)
 incomingEdges g =
     let
@@ -54,7 +29,7 @@ incomingEdges g =
         updateIncomingEdges e =
             Maybe.map ((::) e)
 
-        addIncomingEdge : comparable -> comparable -> Dict comparable (List comparable) -> Dict  comparable (List comparable)
+        addIncomingEdge : comparable -> comparable -> Dict comparable (List comparable) -> Dict comparable (List comparable)
         addIncomingEdge k e =
             Dict.update e (updateIncomingEdges k)
 
@@ -64,6 +39,8 @@ incomingEdges g =
     in
         -- All incoming edges
         Dict.foldl addToIncomingEdges baseDict g.edges
+
+
 
 
 toNodesWithEdges : GraphLike comparable v -> Dict comparable (NodeWithEdges comparable v)
@@ -92,80 +69,168 @@ toNodesWithEdges g =
         List.foldl foldEntries Dict.empty <| Dict.keys g.nodes
 
 
-
-
-foldNodes : (NodeWithEdges comparable v -> s -> s) -> s -> GraphLike comparable v -> s
-foldNodes fn s g =
+foldBase folder fn s g =
     let
         ns = toNodesWithEdges g
     in
-        List.foldl fn s (Dict.values ns)
+        folder fn s (Dict.values ns)
 
 
 
---edgeReduce
---    :  ReduceEdge comparable v s
---    -> SplitState comparable v s
---    -> MergeStates comparable v s
---    -> StartLabel comparable
---    -> s
---    -> GraphLike comparable v
---    -> s
---edgeReduce edge split merge k s g =
---    let
---        -- The edges we already visited
---        edgesVisited
---            = Set.empty
---
---
---        lookupDict =
---            toNodesWithEdges g
---
---        lookup k =
---            Dict.get k lookupDict
---
---        applyStep n =
---
---
---
---
---        callFn k v s =
---            Maybe.withDefault s
---                <| lookup k
---
---
-----
-----        edgesFor k =
-----            Dict.get k g.edges
-----                |> Maybe.withDefault []
-----
-----        recursive k s =
-----            Dict.get k g.nodes
-----                |> Maybe.map (\v -> callFn k v s)
-----                |> Maybe.withDefault s
-----
-----        callFn k v s =
-----            let
-----                edges = edgesFor k
-----
-----                splitStates edges =
-----                    List.Extra.zip edges (split k edges v s)
-----
-----                reduced = case edges of
-----                    [] -> leaf k v s
-----
-----                    [e] -> recursive e (single k e v s)
-----
-----                    _ -> List.map
-----                            (\(e,splitS) -> recursive e splitS)
-----                            splitStates
-----
-----            in
-----                reduced
---
-----            f k v (edgesFor k) s
---
---    in
---        Dict.get k g.nodes
---            |> Maybe.map (\v -> callFn k v s)
---            |> Maybe.withDefault s
+foldlNodes : (NodeWithEdges comparable v -> s -> s) -> s -> GraphLike comparable v -> s
+foldlNodes = foldBase List.foldl
+
+foldNodes = foldlNodes
+
+
+foldrNodes : (NodeWithEdges comparable v -> s -> s) -> s -> GraphLike comparable v -> s
+foldrNodes = foldBase List.foldr
+
+mapNodesToList : (NodeWithEdges comparable v -> a) -> GraphLike comparable v -> List a
+mapNodesToList f g =
+    foldrNodes (\n s -> (f n) :: s) [] g
+
+filterMapNodes : (NodeWithEdges comparable v -> Maybe a) -> GraphLike comparable v -> List a
+filterMapNodes f g =
+    foldrNodes
+        (\n s -> case f n of
+            Nothing -> s
+            Just x -> x ::s)
+        [] g
+
+
+
+
+{-
+    A single node in the transform context
+-}
+type alias El comparable v =
+    { ins: Set comparable
+    , label: comparable
+    , node: v
+    , outs: Set comparable
+    }
+
+type alias Elements comparable v =
+    List (El comparable v)
+
+{-
+    Input for the transform function.
+
+    Ins and outs are the merged input and output labels without the transformed nodes.
+
+-}
+type alias TransformIn comparable v =
+    { ins: Set comparable
+    , outs: Set comparable
+    , nodes: Dict comparable v
+    }
+
+type alias TransformFn comparable v =
+    TransformIn comparable v -> Elements comparable v
+
+{-
+    Transforms nodes that fit the predicate in one swoop.
+-}
+bulkTransform : (TransformFn comparable v) -> (comparable -> v -> Bool) -> GraphLike comparable v -> GraphLike comparable v
+bulkTransform fn pred g =
+    let
+        -- collect incoming edges
+        incoming = incomingEdges g
+        -- find targets
+        nodes = Dict.filter pred g.nodes
+
+        keySet = Set.fromList <| Dict.keys nodes
+
+
+        unionOf d k s =
+            case Dict.get k d of
+                Nothing -> s
+                Just i -> Set.union (Set.fromList i) s
+
+        foldUnion d =
+                (Set.foldl (unionOf d) Set.empty keySet)
+
+        combineKeys d =
+            Set.diff (foldUnion d) keySet
+
+
+        -- new incoming edges are a sum of all edges
+        -- minus the merged edges
+        newIncoming = combineKeys incoming
+        -- new outgoing edges are the sum of all out edges
+        -- minus the merged edges
+        newOutgoing = combineKeys g.edges
+
+        withoutKeys =
+            Set.foldl (\k s -> Dict.remove k s)
+
+        -- remove
+        removeIncomingEdge k =
+            Maybe.map (\es -> List.filter (\e -> e == k) es)
+
+        withoutElements is d =
+            Set.foldl (\k s -> Dict.update k (removeIncomingEdge k)  s ) d is
+
+
+        newNodes = withoutKeys g.nodes keySet
+        newEdges =
+                withoutKeys g.edges keySet
+                    |> withoutElements newIncoming
+
+        -- call the user-provided stuff after the cleanup
+        transformed = fn
+            { ins = newIncoming
+            , outs = newOutgoing
+            , nodes = nodes
+            }
+
+        -- insert each result node
+        nodesOut =
+            List.foldl
+                (\{label, node} ns -> Dict.insert label node ns )
+                newNodes
+                transformed
+
+        -- insert each result edge
+        edgesWithOuts =
+            List.foldl
+                (\{outs, label} ns -> Dict.insert label (Set.toList outs) ns)
+                newEdges
+                transformed
+
+        addEdge to from d =
+            Dict.update from (\i -> Maybe.map (\es -> to :: es) i) d
+
+        edgesWithIns =
+            List.foldl
+                (\{ins, label} es -> Set.foldl (addEdge label) es ins)
+                edgesWithOuts
+                transformed
+
+
+
+    in
+        { g
+            | nodes = nodesOut
+            , edges = edgesWithIns
+            }
+
+
+
+
+
+
+
+mergeNodes : (List v -> v) -> List comparable -> GraphLike comparable v -> GraphLike comparable v
+mergeNodes f ks g =
+    let
+        -- new node value is gotten by merging the labeled nodes
+        -- using the external function
+        newValue =
+            f <| List.filterMap(\k -> Dict.get k g.nodes) ks
+
+--        withoutNodes = removeNodes
+    in
+        g
+
